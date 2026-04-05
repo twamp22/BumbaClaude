@@ -25,7 +25,15 @@ function findClaude(): string {
 // Track spawned processes on Windows
 const activeProcesses = new Map<
   string,
-  { process: ChildProcess; logFile: string; inputQueue: string[] }
+  {
+    process: ChildProcess;
+    logFile: string;
+    sessionId: string;
+    workingDir: string;
+    systemPrompt?: string;
+    model?: string;
+    onExit?: (code: number | null) => void;
+  }
 >();
 
 function ensureLogDir() {
@@ -114,6 +122,74 @@ async function spawnAgentTmux(config: {
   };
 }
 
+function runClaudeProcess(opts: {
+  sessionName: string;
+  claudeSessionId: string;
+  workingDir: string;
+  prompt: string;
+  role?: string;
+  model?: string;
+  logFile: string;
+  isResume: boolean;
+  onExit?: (code: number | null) => void;
+}): ChildProcess {
+  const claudePath = findClaude();
+  const args: string[] = ["-p"];
+
+  if (opts.isResume) {
+    args.push("--resume", opts.claudeSessionId);
+  } else {
+    args.push("--session-id", opts.claudeSessionId);
+    if (opts.role) {
+      args.push("--append-system-prompt", opts.role);
+    }
+  }
+
+  if (opts.model) {
+    args.push("--model", opts.model);
+  }
+
+  const child = spawn(claudePath, args, {
+    cwd: opts.workingDir,
+    stdio: ["pipe", "pipe", "pipe"],
+    shell: false,
+    detached: false,
+    env: { ...process.env },
+  });
+
+  const logStream = fs.createWriteStream(opts.logFile, { flags: "a" });
+
+  child.stdout?.on("data", (data: Buffer) => {
+    logStream.write(data);
+  });
+
+  child.stderr?.on("data", (data: Buffer) => {
+    // Filter out the stdin warning
+    const msg = data.toString();
+    if (!msg.includes("no stdin data received")) {
+      logStream.write(data);
+    }
+  });
+
+  child.on("error", (err) => {
+    logStream.write(`\n[PROCESS ERROR] ${err.message}\n`);
+  });
+
+  child.on("exit", (code) => {
+    logStream.write(`\n[RESPONSE COMPLETE]\n`);
+    // Don't call onExit here for resume -- only for initial spawn failures
+    if (!opts.isResume && opts.onExit && code !== 0) {
+      opts.onExit(code);
+    }
+  });
+
+  // Send prompt via stdin and close it
+  child.stdin?.write(opts.prompt);
+  child.stdin?.end();
+
+  return child;
+}
+
 async function spawnAgentProcess(config: {
   sessionName: string;
   workingDir: string;
@@ -125,59 +201,42 @@ async function spawnAgentProcess(config: {
   const { sessionName, workingDir } = config;
   ensureLogDir();
 
-  const logFile = path.join(LOG_DIR, `${sessionName}.log`);
-  fs.writeFileSync(logFile, "");
-
-  // Role goes in --append-system-prompt, task goes in -p
-  const args: string[] = [];
-
-  if (config.prompt) {
-    args.push("--append-system-prompt", config.prompt);
-  }
-
-  // The -p prompt is the actual task instruction
-  args.push("-p", config.systemPrompt || "Review the project in this directory and begin working on your assigned role.");
-
-  if (config.model) {
-    args.push("--model", config.model);
-  }
-
-  // Ensure the working directory exists, create if needed
+  // Ensure the working directory exists
   if (!fs.existsSync(workingDir)) {
     fs.mkdirSync(workingDir, { recursive: true });
   }
 
-  const claudePath = findClaude();
-  const child = spawn(claudePath, args, {
-    cwd: workingDir,
-    stdio: ["pipe", "pipe", "pipe"],
-    shell: false,
-    detached: false,
-    env: { ...process.env },
+  // Each agent gets a unique Claude session ID for conversation continuity
+  const { v4: uuidv4 } = await import("uuid");
+  const claudeSessionId = uuidv4();
+
+  const logFile = path.join(LOG_DIR, `${sessionName}.log`);
+  fs.writeFileSync(logFile, "");
+
+  const initialPrompt = config.systemPrompt
+    || "Review the project in this directory and begin working on your assigned role.";
+
+  const child = runClaudeProcess({
+    sessionName,
+    claudeSessionId,
+    workingDir,
+    prompt: initialPrompt,
+    role: config.prompt,
+    model: config.model,
+    logFile,
+    isResume: false,
+    onExit: config.onExit,
   });
 
-  const logStream = fs.createWriteStream(logFile, { flags: "a" });
-
-  child.stdout?.on("data", (data: Buffer) => {
-    logStream.write(data);
+  activeProcesses.set(sessionName, {
+    process: child,
+    logFile,
+    sessionId: claudeSessionId,
+    workingDir,
+    systemPrompt: config.prompt,
+    model: config.model,
+    onExit: config.onExit,
   });
-
-  child.stderr?.on("data", (data: Buffer) => {
-    logStream.write(data);
-  });
-
-  child.on("error", (err) => {
-    logStream.write(`\n[PROCESS ERROR] ${err.message}\n`);
-  });
-
-  child.on("exit", (code) => {
-    logStream.write(`\n[PROCESS EXITED] code=${code}\n`);
-    if (config.onExit) config.onExit(code);
-    logStream.end();
-    activeProcesses.delete(sessionName);
-  });
-
-  activeProcesses.set(sessionName, { process: child, logFile, inputQueue: [] });
 
   return {
     sessionId: sessionName,
@@ -228,11 +287,27 @@ export async function sendInput(paneId: string, text: string): Promise<void> {
   }
 
   const entry = activeProcesses.get(paneId);
-  if (!entry || !entry.process.stdin?.writable) {
+  if (!entry) {
     throw new Error(`No active process for session ${paneId}`);
   }
 
-  entry.process.stdin.write(text + "\n");
+  // Spawn a new claude process that resumes the conversation
+  const logStream = fs.createWriteStream(entry.logFile, { flags: "a" });
+  logStream.write(`\n[USER] ${text}\n\n`);
+  logStream.end();
+
+  const child = runClaudeProcess({
+    sessionName: paneId,
+    claudeSessionId: entry.sessionId,
+    workingDir: entry.workingDir,
+    prompt: text,
+    model: entry.model,
+    logFile: entry.logFile,
+    isResume: true,
+  });
+
+  // Update the active process reference
+  entry.process = child;
 }
 
 /**
