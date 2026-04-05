@@ -109,6 +109,72 @@ export function isTmuxAvailable(): boolean {
   }
 }
 
+export const MEMORY_DIR = path.join(process.cwd(), "data", "memory");
+
+/**
+ * Build the context file for an isolated agent.
+ * Combines team instructions + agent role into a single file.
+ */
+export function buildContextFile(teamId: string, agentName: string, role: string): string {
+  if (!fs.existsSync(MEMORY_DIR)) {
+    fs.mkdirSync(MEMORY_DIR, { recursive: true });
+  }
+
+  const teamDir = path.join(MEMORY_DIR, teamId);
+  if (!fs.existsSync(teamDir)) {
+    fs.mkdirSync(teamDir, { recursive: true });
+  }
+
+  // Load team-level custom instructions if they exist
+  const teamInstructionsPath = path.join(teamDir, "instructions.md");
+  const teamInstructions = fs.existsSync(teamInstructionsPath)
+    ? fs.readFileSync(teamInstructionsPath, "utf-8")
+    : "";
+
+  // Load agent-specific memory if it exists
+  const agentSlug = agentName.toLowerCase().replace(/\s+/g, "-");
+  const agentMemoryPath = path.join(teamDir, `agent-${agentSlug}.md`);
+  const agentMemory = fs.existsSync(agentMemoryPath)
+    ? fs.readFileSync(agentMemoryPath, "utf-8")
+    : "";
+
+  // Compose the context file
+  const parts: string[] = [];
+  parts.push(`# Agent: ${agentName}`);
+  parts.push(`## Role\n${role}`);
+  if (teamInstructions) parts.push(`## Team Instructions\n${teamInstructions}`);
+  if (agentMemory) parts.push(`## Agent Memory\n${agentMemory}`);
+
+  const contextPath = path.join(teamDir, `context-${agentSlug}.md`);
+  fs.writeFileSync(contextPath, parts.join("\n\n"));
+  return contextPath;
+}
+
+/**
+ * Map governance rules to --allowedTools flags.
+ */
+function buildAllowedTools(governance?: Record<string, string>): string[] {
+  const tools: string[] = ["Read", "Glob", "Grep", "WebSearch"];
+
+  const canCreateFiles = governance?.can_create_files !== "false";
+  const canRunCommands = governance?.can_run_commands !== "false";
+  const canPushGit = governance?.can_push_git !== "false";
+
+  if (canCreateFiles) {
+    tools.push("Edit", "Write");
+  }
+  if (canRunCommands) {
+    if (canPushGit) {
+      tools.push("Bash");
+    } else {
+      tools.push("Bash");
+      // Note: git push restriction would need disallowedTools pattern
+    }
+  }
+
+  return tools;
+}
+
 /**
  * Spawn a new Claude Code session.
  * Uses tmux on Linux/macOS, direct child_process on Windows.
@@ -119,6 +185,9 @@ export async function spawnAgent(config: {
   prompt?: string;
   systemPrompt?: string;
   model?: string;
+  isolated?: boolean;
+  contextFile?: string;
+  governance?: Record<string, string>;
   onExit?: (code: number | null) => void;
 }): Promise<{ sessionId: string; paneId: string }> {
   if (!IS_WINDOWS && isTmuxAvailable()) {
@@ -165,6 +234,9 @@ function runClaudeProcess(opts: {
   prompt: string;
   role?: string;
   model?: string;
+  isolated?: boolean;
+  contextFile?: string;
+  allowedTools?: string[];
   logFile: string;
   isResume: boolean;
   onExit?: (code: number | null) => void;
@@ -172,11 +244,23 @@ function runClaudeProcess(opts: {
   const claudePath = findClaude();
   const args: string[] = ["-p"];
 
+  // Isolation mode: --bare blocks all auto-discovery
+  if (opts.isolated && !opts.isResume) {
+    args.push("--bare");
+    if (opts.contextFile) {
+      args.push("--system-prompt-file", opts.contextFile);
+    }
+    if (opts.allowedTools && opts.allowedTools.length > 0) {
+      args.push("--allowedTools", ...opts.allowedTools);
+    }
+    args.push("--permission-mode", "auto");
+  }
+
   if (opts.isResume) {
     args.push("--resume", opts.claudeSessionId);
   } else {
     args.push("--session-id", opts.claudeSessionId);
-    if (opts.role) {
+    if (!opts.isolated && opts.role) {
       args.push("--append-system-prompt", opts.role);
     }
   }
@@ -232,6 +316,9 @@ async function spawnAgentProcess(config: {
   prompt?: string;
   systemPrompt?: string;
   model?: string;
+  isolated?: boolean;
+  contextFile?: string;
+  governance?: Record<string, string>;
   onExit?: (code: number | null) => void;
 }): Promise<{ sessionId: string; paneId: string }> {
   const { sessionName, workingDir } = config;
@@ -252,6 +339,8 @@ async function spawnAgentProcess(config: {
   const initialPrompt = config.systemPrompt
     || "Review the project in this directory and begin working on your assigned role.";
 
+  const allowedTools = config.isolated ? buildAllowedTools(config.governance) : undefined;
+
   const child = runClaudeProcess({
     sessionName,
     claudeSessionId,
@@ -259,6 +348,9 @@ async function spawnAgentProcess(config: {
     prompt: initialPrompt,
     role: config.prompt,
     model: config.model,
+    isolated: config.isolated,
+    contextFile: config.contextFile,
+    allowedTools,
     logFile,
     isResume: false,
     onExit: config.onExit,

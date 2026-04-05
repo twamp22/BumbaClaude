@@ -19,6 +19,7 @@ export interface WizardGovernance {
   can_run_commands: boolean;
   can_push_git: boolean;
   max_turns: number;
+  isolated: boolean;
 }
 
 export interface WizardState {
@@ -46,6 +47,7 @@ export default function NewTeamPage() {
       can_run_commands: true,
       can_push_git: false,
       max_turns: 25,
+      isolated: true,
     },
   });
 
@@ -71,7 +73,7 @@ export default function NewTeamPage() {
       const res = await fetch("/api/teams", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(state),
+        body: JSON.stringify({ ...state, isolated: state.governance.isolated }),
       });
       const data = await res.json();
       router.push(`/teams/${data.team.id}`);

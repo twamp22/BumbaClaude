@@ -45,6 +45,16 @@ export default function GovernanceStep({ state, updateState, onBack, onNext }: G
   return (
     <div className="space-y-6">
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
+        <div className="pb-3 mb-3 border-b border-zinc-800">
+          <Toggle
+            label="Isolated mode (recommended)"
+            checked={state.governance.isolated}
+            onChange={(val) => updateGovernance({ isolated: val })}
+          />
+          <p className="text-xs font-mono text-zinc-600 mt-1 ml-1">
+            Blocks auto-discovered memory, CLAUDE.md, hooks. Agents only see BumbaClaude-managed context.
+          </p>
+        </div>
         <Toggle
           label="Agents can create new files"
           checked={state.governance.can_create_files}

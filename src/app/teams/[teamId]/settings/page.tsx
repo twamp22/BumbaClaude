@@ -22,6 +22,16 @@ export default function TeamSettingsPage() {
   const [contextFiles, setContextFiles] = useState<ContextFile[]>([]);
   const [expandedFile, setExpandedFile] = useState<string | null>(null);
   const [contextLoading, setContextLoading] = useState(true);
+  const [instructions, setInstructions] = useState("");
+  const [instructionsSaved, setInstructionsSaved] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/teams/${teamId}/memory`)
+      .then((res) => res.json())
+      .then((data) => setInstructions(data.instructions || ""))
+      .catch(console.error);
+  }, [teamId]);
 
   useEffect(() => {
     fetch(`/api/teams/${teamId}/context-files`)
@@ -244,6 +254,48 @@ export default function TeamSettingsPage() {
             })}
           </div>
         )}
+      </div>
+
+      {/* Custom Memory / Instructions */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 space-y-3">
+        <h2 className="font-mono font-bold text-zinc-300 text-sm uppercase tracking-wider">
+          Custom Instructions
+        </h2>
+        <p className="text-xs font-mono text-zinc-500">
+          Custom context injected into agents when running in isolated mode.
+          This replaces auto-discovered CLAUDE.md and global memory.
+        </p>
+        <textarea
+          value={instructions}
+          onChange={(e) => {
+            setInstructions(e.target.value);
+            setInstructionsSaved(false);
+          }}
+          placeholder={"# Team Instructions\n\nAdd custom instructions for your agents here.\nThis is injected as the system prompt in isolated mode.\n\nExample:\n- Always write TypeScript\n- Use functional components\n- Follow the project's existing patterns"}
+          rows={10}
+          className="w-full bg-black/30 border border-zinc-700 rounded-lg px-4 py-3 text-sm font-mono text-zinc-200 placeholder:text-zinc-700 focus:outline-none focus:border-zinc-500 resize-y"
+        />
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-mono text-zinc-600">
+            {instructionsSaved ? "Saved" : "Unsaved changes"}
+          </span>
+          <button
+            onClick={async () => {
+              setSaving(true);
+              await fetch(`/api/teams/${teamId}/memory`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ instructions }),
+              });
+              setInstructionsSaved(true);
+              setSaving(false);
+            }}
+            disabled={instructionsSaved || saving}
+            className="px-4 py-1.5 text-sm font-mono bg-green-600 hover:bg-green-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white rounded-lg transition-colors"
+          >
+            {saving ? "Saving..." : "Save"}
+          </button>
+        </div>
       </div>
 
       {/* Danger zone */}

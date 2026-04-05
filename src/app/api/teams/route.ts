@@ -8,7 +8,7 @@ import {
   createAuditEvent,
   updateAgentStatus,
 } from "@/lib/db";
-import { spawnAgent } from "@/lib/tmux";
+import { spawnAgent, buildContextFile } from "@/lib/tmux";
 import { startWatching } from "@/lib/watcher";
 
 export async function GET() {
@@ -18,9 +18,10 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { name, project_dir, execution_mode, agents, governance } = body;
+  const { name, project_dir, execution_mode, agents, governance, isolated } = body;
 
   const teamId = uuidv4();
+  const useIsolation = isolated !== false; // Default to true
 
   const team = createTeam({
     id: teamId,
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest) {
   });
 
   // Create governance rules
+  const governanceMap: Record<string, string> = {};
   if (governance) {
     for (const [ruleType, ruleValue] of Object.entries(governance)) {
       createGovernanceRule({
@@ -39,6 +41,7 @@ export async function POST(request: NextRequest) {
         rule_type: ruleType,
         rule_value: String(ruleValue),
       });
+      governanceMap[ruleType] = String(ruleValue);
     }
   }
 
@@ -49,6 +52,12 @@ export async function POST(request: NextRequest) {
       const agentId = uuidv4();
       const sessionName = `bumba-${teamId.slice(0, 8)}-${agentDef.name.toLowerCase().replace(/\s+/g, "-")}`;
 
+      // Build isolated context file if isolation is enabled
+      let contextFile: string | undefined;
+      if (useIsolation) {
+        contextFile = buildContextFile(teamId, agentDef.name, agentDef.role);
+      }
+
       let tmuxSession: string | null = null;
       try {
         const result = await spawnAgent({
@@ -57,6 +66,9 @@ export async function POST(request: NextRequest) {
           prompt: agentDef.role,
           systemPrompt: agentDef.system_prompt || undefined,
           model: agentDef.model_tier,
+          isolated: useIsolation,
+          contextFile,
+          governance: governanceMap,
           onExit: (code) => {
             updateAgentStatus(agentId, code === 0 ? "completed" : "errored");
             createAuditEvent({
@@ -93,6 +105,7 @@ export async function POST(request: NextRequest) {
           name: agentDef.name,
           model_tier: agentDef.model_tier,
           role: agentDef.role,
+          isolated: useIsolation,
         }),
       });
     }
@@ -101,7 +114,7 @@ export async function POST(request: NextRequest) {
   createAuditEvent({
     team_id: teamId,
     event_type: "team_created",
-    event_data: JSON.stringify({ name, agent_count: spawnedAgents.length }),
+    event_data: JSON.stringify({ name, agent_count: spawnedAgents.length, isolated: useIsolation }),
   });
 
   // Start filesystem watcher for this team
