@@ -53,9 +53,8 @@ export async function POST(request: NextRequest) {
         const result = await spawnAgent({
           sessionName,
           workingDir: project_dir,
-          agentArgs: agentDef.system_prompt
-            ? `--system-prompt "${agentDef.system_prompt}"`
-            : "",
+          prompt: agentDef.role,
+          systemPrompt: agentDef.system_prompt || undefined,
           model: agentDef.model_tier,
         });
         tmuxSession = result.paneId;

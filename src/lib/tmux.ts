@@ -72,31 +72,37 @@ export function isTmuxAvailable(): boolean {
 export async function spawnAgent(config: {
   sessionName: string;
   workingDir: string;
-  agentArgs: string;
+  prompt?: string;
+  systemPrompt?: string;
   model?: string;
 }): Promise<{ sessionId: string; paneId: string }> {
-  const { sessionName, workingDir, agentArgs } = config;
-
   if (!IS_WINDOWS && isTmuxAvailable()) {
     return spawnAgentTmux(config);
   }
 
-  return spawnAgentProcess(sessionName, workingDir, agentArgs, config.model);
+  return spawnAgentProcess(config);
 }
 
 async function spawnAgentTmux(config: {
   sessionName: string;
   workingDir: string;
-  agentArgs: string;
+  prompt?: string;
+  systemPrompt?: string;
   model?: string;
 }): Promise<{ sessionId: string; paneId: string }> {
-  const { sessionName, workingDir, agentArgs } = config;
+  const { sessionName, workingDir } = config;
 
   await runAsync(`tmux new-session -d -s "${sessionName}" -c "${workingDir}"`);
 
-  let claudeCmd = `claude ${agentArgs}`;
-  if (config.model) {
-    claudeCmd += ` --model ${config.model}`;
+  let claudeCmd = "claude";
+  if (config.model) claudeCmd += ` --model ${config.model}`;
+  if (config.systemPrompt) {
+    const escaped = config.systemPrompt.replace(/'/g, "'\\''");
+    claudeCmd += ` --append-system-prompt '${escaped}'`;
+  }
+  if (config.prompt) {
+    const escaped = config.prompt.replace(/'/g, "'\\''");
+    claudeCmd += ` -p '${escaped}'`;
   }
 
   await runAsync(`tmux send-keys -t "${sessionName}" '${claudeCmd}' Enter`);
@@ -107,25 +113,32 @@ async function spawnAgentTmux(config: {
   };
 }
 
-async function spawnAgentProcess(
-  sessionName: string,
-  workingDir: string,
-  agentArgs: string,
-  model?: string
-): Promise<{ sessionId: string; paneId: string }> {
+async function spawnAgentProcess(config: {
+  sessionName: string;
+  workingDir: string;
+  prompt?: string;
+  systemPrompt?: string;
+  model?: string;
+}): Promise<{ sessionId: string; paneId: string }> {
+  const { sessionName, workingDir } = config;
   ensureLogDir();
 
   const logFile = path.join(LOG_DIR, `${sessionName}.log`);
   fs.writeFileSync(logFile, "");
 
-  const args: string[] = [];
-  if (agentArgs.trim()) {
-    // Parse args string into array, respecting quotes
-    const parsed = agentArgs.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
-    args.push(...parsed.map((a) => a.replace(/^"|"$/g, "")));
+  const args: string[] = ["-p"];
+
+  // Build the prompt: combine system prompt (role) and user prompt
+  const promptParts: string[] = [];
+  if (config.systemPrompt) promptParts.push(config.systemPrompt);
+  if (config.prompt) promptParts.push(config.prompt);
+  args.push(promptParts.join("\n\n") || "Hello, ready to work.");
+
+  if (config.model) {
+    args.push("--model", config.model);
   }
-  if (model) {
-    args.push("--model", model);
+  if (config.systemPrompt) {
+    args.push("--append-system-prompt", config.systemPrompt);
   }
 
   // Ensure the working directory exists, create if needed
