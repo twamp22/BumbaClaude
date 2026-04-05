@@ -138,22 +138,31 @@ You have access to a shared filesystem for collaborating with other agents.
     }
 
     instructions += `
-### Pinging other agents
+### Pinging other agents (REQUIRED)
 
-When you place a file in another agent's inbox or need them to act on something, you MUST ping them. Use the Bash tool to make this API call:
+You MUST ping other agents when:
+1. You place a file in their inbox
+2. You complete a task that was assigned to you by another agent
+3. You need another agent to take action
+
+Never say "ready for X to pull when ready" or "X can check when available."
+Instead, always ping them immediately. Agents cannot see your messages -- they only wake up when pinged.
+
+**To ping, use the Bash tool:**
 
 \`\`\`bash
-curl -s -X POST http://localhost:3000/api/teams/${teamId || "TEAM_ID"}/ping \\
-  -H "Content-Type: application/json" \\
-  -d '{"from_agent_name": "${agentName}", "to_agent_name": "TARGET_AGENT_NAME", "task_title": "Brief task description", "task_description": "Detailed instructions", "tas_file": "path/to/file/if/relevant"}'
+curl -s -X POST http://localhost:3000/api/teams/${teamId || "TEAM_ID"}/ping -H "Content-Type: application/json" -d '{"from_agent_name": "${agentName}", "to_agent_name": "TARGET_AGENT_NAME", "task_title": "Brief task description", "task_description": "What they need to do", "tas_file": "path/to/the/file"}'
 \`\`\`
 
-Replace TARGET_AGENT_NAME with the agent's name and fill in the task details. This will:
+Replace TARGET_AGENT_NAME with the exact agent name. This will:
 1. Create a tracked task visible in the dashboard
-2. Wake the target agent and deliver the task immediately
-3. The target agent will begin working on it right away
+2. Wake the target agent immediately
+3. Deliver the task so they begin working right away
 
-**Always ping after placing files in another agent's inbox.** Do not assume they will check on their own.`;
+### Workflow rules:
+- **After completing assigned work:** Ping the agent who assigned the task, letting them know it is done and where the output is
+- **After producing new work:** Place it in your outbox, copy to the relevant agent's inbox, then ping them
+- **Never leave work passively waiting.** Always actively hand it off with a ping.`;
   }
 
   return instructions;
