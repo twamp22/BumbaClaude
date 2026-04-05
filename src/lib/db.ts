@@ -212,6 +212,12 @@ export function createAuditEvent(event: {
     .run(event.team_id, event.agent_id ?? null, event.event_type, event.event_data ?? null);
 }
 
+export function getRecentAuditEvents(limit: number = 20): AuditEvent[] {
+  return getDb()
+    .prepare("SELECT * FROM audit_events ORDER BY created_at DESC LIMIT ?")
+    .all(limit) as AuditEvent[];
+}
+
 // --- Templates ---
 
 export function getAllTemplates(): Template[] {
