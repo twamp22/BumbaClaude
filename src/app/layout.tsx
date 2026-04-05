@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
 import { getAllTeams } from "@/lib/db";
-import StatusBadge from "@/components/shared/StatusBadge";
+import TeamNavItem from "@/components/shared/TeamNavItem";
 
 export const metadata: Metadata = {
   title: "BumbaClaude - Mission Control",
@@ -40,7 +40,7 @@ export default function RootLayout({
               </Link>
             </div>
 
-            <nav className="flex-1 px-3 space-y-1">
+            <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
               <Link
                 href="/"
                 className="block px-3 py-2 text-sm font-mono text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 rounded transition-colors"
@@ -60,14 +60,7 @@ export default function RootLayout({
                     Teams
                   </div>
                   {teams.slice(0, 10).map((team) => (
-                    <Link
-                      key={team.id}
-                      href={`/teams/${team.id}`}
-                      className="flex items-center justify-between px-3 py-1.5 text-sm font-mono text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 rounded transition-colors"
-                    >
-                      <span className="truncate">{team.name}</span>
-                      <StatusBadge status={team.status} />
-                    </Link>
+                    <TeamNavItem key={team.id} team={team} />
                   ))}
                 </div>
               )}
