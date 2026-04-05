@@ -1,0 +1,42 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# next.js
+.next/
+out/
+
+# build
+dist/
+build/
+
+# env
+.env
+.env.local
+.env.production
+
+# database
+data/
+*.db
+*.db-journal
+*.db-wal
+
+# os
+.DS_Store
+Thumbs.db
+
+# ide
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# debug
+npm-debug.log*
+pnpm-debug.log*
+
+# typescript
+*.tsbuildinfo
+
+# turbo
+.turbo/
