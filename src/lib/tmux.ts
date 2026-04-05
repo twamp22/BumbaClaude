@@ -32,6 +32,7 @@ const activeProcesses = new Map<
     workingDir: string;
     systemPrompt?: string;
     model?: string;
+    allowedTools?: string[];
     onExit?: (code: number | null) => void;
   }
 >();
@@ -53,6 +54,8 @@ interface SessionMeta {
   systemPrompt?: string;
   model?: string;
   logFile: string;
+  isolated?: boolean;
+  allowedTools?: string[];
 }
 
 function saveSessionMeta(sessionName: string, meta: SessionMeta): void {
@@ -241,15 +244,16 @@ function runClaudeProcess(opts: {
   // Isolation mode: inject managed context + restrict tools
   // We don't use --bare because it blocks OAuth/keychain auth (needed for Max subscriptions).
   // Instead we inject our context via --system-prompt-file and control tools via --allowedTools.
+  // Always apply tool permissions and permission mode
+  if (opts.allowedTools && opts.allowedTools.length > 0) {
+    args.push("--allowedTools", opts.allowedTools.join(" "));
+  }
+  args.push("--permission-mode", "auto");
+
   if (opts.isolated && !opts.isResume) {
     if (opts.contextFile) {
       args.push("--system-prompt-file", opts.contextFile);
     }
-    if (opts.allowedTools && opts.allowedTools.length > 0) {
-      args.push("--allowedTools", opts.allowedTools.join(" "));
-    }
-    args.push("--permission-mode", "auto");
-    // Don't use --no-session-persistence: we need sessions saved for --resume
   }
 
   if (opts.isResume) {
@@ -367,6 +371,7 @@ async function spawnAgentProcess(config: {
     workingDir,
     systemPrompt: config.prompt,
     model: config.model,
+    allowedTools,
     onExit: config.onExit,
   });
 
@@ -377,6 +382,8 @@ async function spawnAgentProcess(config: {
     systemPrompt: config.prompt,
     model: config.model,
     logFile,
+    isolated: config.isolated,
+    allowedTools,
   });
 
   return {
@@ -443,6 +450,7 @@ export async function sendInput(paneId: string, text: string): Promise<void> {
       workingDir: meta.workingDir,
       systemPrompt: meta.systemPrompt,
       model: meta.model,
+      allowedTools: meta.allowedTools,
     };
     activeProcesses.set(paneId, entry);
   }
@@ -458,6 +466,7 @@ export async function sendInput(paneId: string, text: string): Promise<void> {
     workingDir: entry.workingDir,
     prompt: text,
     model: entry.model,
+    allowedTools: entry.allowedTools,
     logFile: entry.logFile,
     isResume: true,
   });
