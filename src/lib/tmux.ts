@@ -254,6 +254,7 @@ function runClaudeProcess(opts: {
     if (opts.contextFile) {
       args.push("--system-prompt-file", opts.contextFile);
     }
+    args.push("--disable-slash-commands");
   }
 
   if (opts.isResume) {
