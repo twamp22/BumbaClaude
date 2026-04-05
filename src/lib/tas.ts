@@ -108,7 +108,7 @@ export function getTASContents(teamDir: string): TASContents {
 /**
  * Generate TAS instructions for an agent's context file.
  */
-export function getTASInstructions(teamDir: string, agentName: string, allAgentNames: string[]): string {
+export function getTASInstructions(teamDir: string, agentName: string, allAgentNames: string[], teamId?: string): string {
   const slug = agentName.replace(/\s+/g, "_");
   const tasDir = path.join(teamDir, "TAS").replace(/\\/g, "/");
 
@@ -136,6 +136,24 @@ You have access to a shared filesystem for collaborating with other agents.
     for (const other of otherAgents) {
       instructions += `- **${other}:** inbox at \`${tasDir}/${other}/inbox/\`, outbox at \`${tasDir}/${other}/outbox/\`\n`;
     }
+
+    instructions += `
+### Pinging other agents
+
+When you place a file in another agent's inbox or need them to act on something, you MUST ping them. Use the Bash tool to make this API call:
+
+\`\`\`bash
+curl -s -X POST http://localhost:3000/api/teams/${teamId || "TEAM_ID"}/ping \\
+  -H "Content-Type: application/json" \\
+  -d '{"from_agent_name": "${agentName}", "to_agent_name": "TARGET_AGENT_NAME", "task_title": "Brief task description", "task_description": "Detailed instructions", "tas_file": "path/to/file/if/relevant"}'
+\`\`\`
+
+Replace TARGET_AGENT_NAME with the agent's name and fill in the task details. This will:
+1. Create a tracked task visible in the dashboard
+2. Wake the target agent and deliver the task immediately
+3. The target agent will begin working on it right away
+
+**Always ping after placing files in another agent's inbox.** Do not assume they will check on their own.`;
   }
 
   return instructions;

@@ -41,6 +41,13 @@ export function getDb(): Database.Database {
     dbInstance.exec(seed);
   }
 
+  // Migrations
+  try {
+    dbInstance.exec("ALTER TABLE tasks ADD COLUMN created_by_agent_id TEXT REFERENCES agents(id)");
+  } catch {
+    // Column already exists
+  }
+
   return dbInstance;
 }
 
@@ -144,9 +151,9 @@ export function getTasksByTeam(teamId: string): Task[] {
 export function createTask(task: Omit<Task, "created_at" | "completed_at">): Task {
   const db = getDb();
   db.prepare(
-    `INSERT INTO tasks (id, team_id, title, description, assigned_agent_id, status)
-     VALUES (?, ?, ?, ?, ?, ?)`
-  ).run(task.id, task.team_id, task.title, task.description, task.assigned_agent_id, task.status);
+    `INSERT INTO tasks (id, team_id, title, description, assigned_agent_id, created_by_agent_id, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(task.id, task.team_id, task.title, task.description, task.assigned_agent_id, task.created_by_agent_id, task.status);
   return db.prepare("SELECT * FROM tasks WHERE id = ?").get(task.id) as Task;
 }
 

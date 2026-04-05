@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   title TEXT NOT NULL,
   description TEXT,
   assigned_agent_id TEXT REFERENCES agents(id),
+  created_by_agent_id TEXT REFERENCES agents(id),  -- agent that created this task (NULL = user-created)
   status TEXT NOT NULL DEFAULT 'pending',    -- pending, claimed, in_progress, completed, blocked
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   completed_at DATETIME

@@ -35,6 +35,7 @@ export interface Task {
   title: string;
   description: string | null;
   assigned_agent_id: string | null;
+  created_by_agent_id: string | null;
   status: TaskStatus;
   created_at: string;
   completed_at: string | null;

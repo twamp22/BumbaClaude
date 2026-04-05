@@ -71,11 +71,14 @@ export default function TaskList({ tasks, agents, teamId, onRefresh }: TaskListP
           >
             <div className="flex-1 min-w-0">
               <div className="text-sm font-mono text-zinc-100">{task.title}</div>
-              {getAgentName(task.assigned_agent_id) && (
-                <div className="text-xs font-mono text-zinc-500 mt-0.5">
-                  {getAgentName(task.assigned_agent_id)}
-                </div>
-              )}
+              <div className="text-xs font-mono text-zinc-500 mt-0.5 flex gap-2">
+                {getAgentName(task.assigned_agent_id) && (
+                  <span>&rarr; {getAgentName(task.assigned_agent_id)}</span>
+                )}
+                {getAgentName(task.created_by_agent_id) && (
+                  <span className="text-zinc-600">from {getAgentName(task.created_by_agent_id)}</span>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-2 ml-2 flex-shrink-0">
               <StatusBadge status={task.status} />

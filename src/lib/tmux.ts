@@ -145,7 +145,7 @@ export function buildContextFile(teamId: string, agentName: string, role: string
   // Build TAS instructions if project directory is provided
   let tasInstructions = "";
   if (projectDir && allAgentNames) {
-    tasInstructions = getTASInstructions(projectDir, agentName, allAgentNames);
+    tasInstructions = getTASInstructions(projectDir, agentName, allAgentNames, teamId);
   }
 
   // Compose the context file
