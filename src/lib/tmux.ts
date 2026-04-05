@@ -255,7 +255,7 @@ function runClaudeProcess(opts: {
       args.push("--allowedTools", ...opts.allowedTools);
     }
     args.push("--permission-mode", "auto");
-    args.push("--no-session-persistence");
+    // Don't use --no-session-persistence: we need sessions saved for --resume
   }
 
   if (opts.isResume) {
