@@ -7,7 +7,6 @@ import {
   createAuditEvent,
 } from "@/lib/db";
 import { killPane } from "@/lib/tmux";
-import { stopWatching } from "@/lib/watcher";
 
 export async function POST(
   _request: NextRequest,
@@ -19,22 +18,23 @@ export async function POST(
     return NextResponse.json({ error: "Team not found" }, { status: 404 });
   }
 
+  // Update all agent statuses first (DB is the source of truth)
   const agents = getAgentsByTeam(teamId);
   for (const agent of agents) {
+    if (agent.status !== "completed" && agent.status !== "errored") {
+      updateAgentStatus(agent.id, "completed");
+    }
+    // Best-effort process cleanup
     if (agent.tmux_session) {
       try {
         await killPane(agent.tmux_session);
-      } catch (error) {
-        console.error(`Failed to kill agent ${agent.name}:`, error);
+      } catch {
+        // Process may already be dead or never started
       }
-    }
-    if (agent.status !== "completed" && agent.status !== "errored") {
-      updateAgentStatus(agent.id, "completed");
     }
   }
 
   updateTeamStatus(teamId, "completed");
-  stopWatching(team.name);
 
   createAuditEvent({
     team_id: teamId,
