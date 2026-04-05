@@ -7,6 +7,7 @@ import {
   createAuditEvent,
 } from "@/lib/db";
 import { killPane } from "@/lib/tmux";
+import { stopWatching } from "@/lib/watcher";
 
 export async function POST(
   _request: NextRequest,
@@ -33,6 +34,7 @@ export async function POST(
   }
 
   updateTeamStatus(teamId, "completed");
+  stopWatching(team.name);
 
   createAuditEvent({
     team_id: teamId,

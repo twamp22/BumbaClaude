@@ -8,6 +8,7 @@ import {
   createAuditEvent,
 } from "@/lib/db";
 import { spawnAgent } from "@/lib/tmux";
+import { startWatching } from "@/lib/watcher";
 
 export async function GET() {
   const teams = getAllTeams();
@@ -93,6 +94,13 @@ export async function POST(request: NextRequest) {
     event_type: "team_created",
     event_data: JSON.stringify({ name, agent_count: spawnedAgents.length }),
   });
+
+  // Start filesystem watcher for this team
+  try {
+    startWatching(name, teamId);
+  } catch (error) {
+    console.error(`Failed to start watcher for team ${name}:`, error);
+  }
 
   return NextResponse.json({ team, agents: spawnedAgents }, { status: 201 });
 }
