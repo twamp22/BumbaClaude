@@ -56,21 +56,26 @@ export async function POST(
     return NextResponse.json({ error: "Agent has no tmux session" }, { status: 400 });
   }
 
-  if (action === "message") {
-    await sendInput(agent.tmux_session, text);
-    createAuditEvent({
-      team_id: teamId,
-      agent_id: agentId,
-      event_type: "message_sent",
-      event_data: JSON.stringify({ text }),
-    });
-  } else if (action === "interrupt") {
-    await interrupt(agent.tmux_session);
-    createAuditEvent({
-      team_id: teamId,
-      agent_id: agentId,
-      event_type: "agent_interrupted",
-    });
+  try {
+    if (action === "message") {
+      await sendInput(agent.tmux_session, text);
+      createAuditEvent({
+        team_id: teamId,
+        agent_id: agentId,
+        event_type: "message_sent",
+        event_data: JSON.stringify({ text }),
+      });
+    } else if (action === "interrupt") {
+      await interrupt(agent.tmux_session);
+      createAuditEvent({
+        team_id: teamId,
+        agent_id: agentId,
+        event_type: "agent_interrupted",
+      });
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: `Agent process unavailable: ${message}` }, { status: 502 });
   }
 
   return NextResponse.json({ ok: true });

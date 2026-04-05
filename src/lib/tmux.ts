@@ -7,6 +7,21 @@ import type { TmuxSession } from "./types";
 const IS_WINDOWS = os.platform() === "win32";
 const LOG_DIR = path.join(process.cwd(), "data", "agent-logs");
 
+function findClaude(): string {
+  // Try common locations on Windows
+  if (IS_WINDOWS) {
+    const candidates = [
+      path.join(os.homedir(), ".local", "bin", "claude.exe"),
+      path.join(os.homedir(), ".local", "bin", "claude"),
+    ];
+    for (const candidate of candidates) {
+      if (fs.existsSync(candidate)) return candidate;
+    }
+  }
+  // Fall back to bare command (works if in PATH on Unix)
+  return "claude";
+}
+
 // Track spawned processes on Windows
 const activeProcesses = new Map<
   string,
@@ -113,11 +128,13 @@ async function spawnAgentProcess(
     args.push("--model", model);
   }
 
-  const child = spawn("claude", args, {
+  const claudePath = findClaude();
+  const child = spawn(claudePath, args, {
     cwd: workingDir,
     stdio: ["pipe", "pipe", "pipe"],
-    shell: true,
+    shell: false,
     detached: false,
+    env: { ...process.env },
   });
 
   const logStream = fs.createWriteStream(logFile, { flags: "a" });

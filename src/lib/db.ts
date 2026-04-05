@@ -74,6 +74,15 @@ export function updateTeamStatus(id: string, status: TeamStatus): void {
   }
 }
 
+export function deleteTeam(id: string): void {
+  const db = getDb();
+  db.prepare("DELETE FROM audit_events WHERE team_id = ?").run(id);
+  db.prepare("DELETE FROM governance_rules WHERE team_id = ?").run(id);
+  db.prepare("DELETE FROM tasks WHERE team_id = ?").run(id);
+  db.prepare("DELETE FROM agents WHERE team_id = ?").run(id);
+  db.prepare("DELETE FROM teams WHERE id = ?").run(id);
+}
+
 // --- Agents ---
 
 export function getAgentsByTeam(teamId: string): Agent[] {

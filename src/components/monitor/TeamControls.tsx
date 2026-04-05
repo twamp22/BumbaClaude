@@ -11,12 +11,12 @@ interface TeamControlsProps {
 export default function TeamControls({ team, onRefresh }: TeamControlsProps) {
   const router = useRouter();
 
-  const action = async (endpoint: string) => {
+  const pause = async () => {
     try {
-      await fetch(`/api/teams/${team.id}/${endpoint}`, { method: "POST" });
+      await fetch(`/api/teams/${team.id}/pause`, { method: "POST" });
       onRefresh();
     } catch (error) {
-      console.error(`Failed to ${endpoint}:`, error);
+      console.error("Failed to pause:", error);
     }
   };
 
@@ -33,12 +33,58 @@ export default function TeamControls({ team, onRefresh }: TeamControlsProps) {
     }
   };
 
+  const kill = async () => {
+    try {
+      await fetch(`/api/teams/${team.id}/kill`, { method: "POST" });
+      router.push("/");
+    } catch (error) {
+      console.error("Failed to kill:", error);
+    }
+  };
+
+  const deleteTeam = async () => {
+    await fetch(`/api/teams/${team.id}`, { method: "DELETE" });
+    router.push("/");
+  };
+
+  if (team.status === "completed" || team.status === "errored") {
+    return (
+      <div className="flex items-center justify-between bg-zinc-900 border-t border-zinc-800 px-4 py-3">
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-mono text-zinc-500">
+            Team {team.status}
+          </span>
+          <button
+            onClick={() => router.push(`/teams/${team.id}/audit`)}
+            className="px-3 py-1.5 text-xs font-mono bg-zinc-700 hover:bg-zinc-600 text-zinc-300 rounded transition-colors"
+          >
+            Audit Log
+          </button>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={deleteTeam}
+            className="px-3 py-1.5 text-xs font-mono bg-red-700 hover:bg-red-600 text-white rounded transition-colors"
+          >
+            Delete Team
+          </button>
+          <button
+            onClick={() => router.push("/")}
+            className="px-3 py-1.5 text-xs font-mono bg-zinc-700 hover:bg-zinc-600 text-zinc-300 rounded transition-colors"
+          >
+            Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center justify-between bg-zinc-900 border-t border-zinc-800 px-4 py-3">
       <div className="flex gap-2">
         {team.status === "running" && (
           <button
-            onClick={() => action("pause")}
+            onClick={pause}
             className="px-3 py-1.5 text-xs font-mono bg-amber-600 hover:bg-amber-500 text-white rounded transition-colors"
           >
             Pause All
@@ -61,7 +107,7 @@ export default function TeamControls({ team, onRefresh }: TeamControlsProps) {
       </div>
       <div className="flex gap-2">
         <button
-          onClick={() => action("kill")}
+          onClick={kill}
           className="px-3 py-1.5 text-xs font-mono bg-red-700 hover:bg-red-600 text-white rounded transition-colors"
         >
           Kill Team

@@ -6,7 +6,9 @@ import {
   getGovernanceRules,
   updateTeamStatus,
   createAuditEvent,
+  deleteTeam,
 } from "@/lib/db";
+import { killPane } from "@/lib/tmux";
 
 export async function GET(
   _request: NextRequest,
@@ -47,4 +49,30 @@ export async function PATCH(
   });
 
   return NextResponse.json(getTeam(teamId));
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ teamId: string }> }
+) {
+  const { teamId } = await params;
+  const team = getTeam(teamId);
+  if (!team) {
+    return NextResponse.json({ error: "Team not found" }, { status: 404 });
+  }
+
+  // Kill any running agents first
+  const agents = getAgentsByTeam(teamId);
+  for (const agent of agents) {
+    if (agent.tmux_session) {
+      try {
+        await killPane(agent.tmux_session);
+      } catch {
+        // Process may already be dead
+      }
+    }
+  }
+
+  deleteTeam(teamId);
+  return NextResponse.json({ ok: true });
 }
