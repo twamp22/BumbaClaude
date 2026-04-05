@@ -30,7 +30,7 @@ export default function ProjectStep({ state, updateState, onNext }: ProjectStepP
           type="text"
           value={state.project_dir}
           onChange={(e) => updateState({ project_dir: e.target.value })}
-          placeholder="/home/user/project"
+          placeholder="Loading default..."
           className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm font-mono text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500"
         />
       </div>
