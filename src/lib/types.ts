@@ -4,7 +4,7 @@ export type TeamStatus = "running" | "paused" | "completed" | "errored";
 export type ExecutionMode = "in-process" | "tmux";
 export type AgentStatus = "idle" | "working" | "waiting" | "completed" | "errored";
 export type ModelTier = "haiku" | "sonnet" | "opus";
-export type TaskStatus = "pending" | "claimed" | "in_progress" | "completed" | "blocked";
+export type TaskStatus = "pending" | "claimed" | "in_progress" | "review" | "completed" | "blocked";
 
 export interface Team {
   id: string;
@@ -36,6 +36,7 @@ export interface Task {
   description: string | null;
   assigned_agent_id: string | null;
   created_by_agent_id: string | null;
+  parent_task_id: string | null;
   status: TaskStatus;
   created_at: string;
   completed_at: string | null;

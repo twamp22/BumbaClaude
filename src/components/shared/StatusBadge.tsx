@@ -14,11 +14,13 @@ const STATUS_COLORS: Record<string, string> = {
   pending: "bg-zinc-500",
   claimed: "bg-blue-500",
   in_progress: "bg-green-500",
+  review: "bg-purple-500",
   blocked: "bg-red-500",
 };
 
 const STATUS_LABELS: Record<string, string> = {
   in_progress: "In Progress",
+  review: "In Review",
 };
 
 export default function StatusBadge({ status }: { status: string }) {

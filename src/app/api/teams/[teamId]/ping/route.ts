@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import {
   getTeam,
   getAgentsByTeam,
+  getTasksByTeam,
   createTask,
   updateTaskStatus,
   createAuditEvent,
@@ -20,7 +21,7 @@ export async function POST(
   }
 
   const body = await request.json();
-  const { from_agent_name, to_agent_name, task_title, task_description, tas_file } = body;
+  const { from_agent_name, to_agent_name, task_title, task_description, tas_file, parent_task_id } = body;
 
   const agents = getAgentsByTeam(teamId);
   const fromAgent = agents.find(
@@ -37,7 +38,32 @@ export async function POST(
     );
   }
 
-  // Create a tracked task
+  // Auto-detect parent task: if from_agent has an in_progress task, use it as parent
+  let resolvedParentId = parent_task_id || null;
+  if (!resolvedParentId && fromAgent) {
+    const tasks = getTasksByTeam(teamId);
+    const agentInProgress = tasks.find(
+      (t) => t.assigned_agent_id === fromAgent.id && t.status === "in_progress"
+    );
+    if (agentInProgress) {
+      resolvedParentId = agentInProgress.id;
+      // Move parent task to "review" since the agent is handing off work
+      updateTaskStatus(agentInProgress.id, "review");
+      createAuditEvent({
+        team_id: teamId,
+        agent_id: fromAgent.id,
+        event_type: "task_status_changed",
+        event_data: JSON.stringify({
+          task_id: agentInProgress.id,
+          from: "in_progress",
+          to: "review",
+          reason: `Handed off to ${to_agent_name}`,
+        }),
+      });
+    }
+  }
+
+  // Create a sub-task linked to the parent
   const taskId = uuidv4();
   const task = createTask({
     id: taskId,
@@ -46,6 +72,7 @@ export async function POST(
     description: task_description || null,
     assigned_agent_id: toAgent.id,
     created_by_agent_id: fromAgent?.id || null,
+    parent_task_id: resolvedParentId,
     status: "pending",
   });
 
@@ -57,6 +84,7 @@ export async function POST(
       from: from_agent_name || "User",
       to: to_agent_name,
       task_id: taskId,
+      parent_task_id: resolvedParentId,
       task_title: task_title,
       tas_file,
     }),
@@ -84,6 +112,7 @@ export async function POST(
         event_data: JSON.stringify({
           from: from_agent_name || "User",
           task_id: taskId,
+          parent_task_id: resolvedParentId,
         }),
       });
     } catch (error) {
@@ -95,5 +124,5 @@ export async function POST(
     }
   }
 
-  return NextResponse.json({ ok: true, task, pinged: toAgent.name });
+  return NextResponse.json({ ok: true, task, pinged: toAgent.name, parent_task_id: resolvedParentId });
 }

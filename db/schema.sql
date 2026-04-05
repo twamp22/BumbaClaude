@@ -31,7 +31,8 @@ CREATE TABLE IF NOT EXISTS tasks (
   description TEXT,
   assigned_agent_id TEXT REFERENCES agents(id),
   created_by_agent_id TEXT REFERENCES agents(id),  -- agent that created this task (NULL = user-created)
-  status TEXT NOT NULL DEFAULT 'pending',    -- pending, claimed, in_progress, completed, blocked
+  parent_task_id TEXT REFERENCES tasks(id),         -- parent task (NULL = top-level task)
+  status TEXT NOT NULL DEFAULT 'pending',    -- pending, claimed, in_progress, review, completed, blocked
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   completed_at DATETIME
 );

@@ -52,7 +52,8 @@ export default function TaskList({ tasks, agents, teamId, onRefresh }: TaskListP
   };
 
   const completed = tasks.filter((t) => t.status === "completed");
-  const active = tasks.filter((t) => t.status !== "completed");
+  const topLevel = tasks.filter((t) => !t.parent_task_id && t.status !== "completed");
+  const getSubTasks = (parentId: string) => tasks.filter((t) => t.parent_task_id === parentId);
 
   return (
     <div className="flex flex-col h-full">
@@ -64,34 +65,67 @@ export default function TaskList({ tasks, agents, teamId, onRefresh }: TaskListP
       </h3>
 
       <div className="flex-1 space-y-1.5 overflow-y-auto">
-        {active.map((task) => (
-          <div
-            key={task.id}
-            className="flex items-start justify-between py-2 px-3 bg-zinc-900/80 border border-zinc-800 rounded-lg group"
-          >
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-mono text-zinc-100">{task.title}</div>
-              <div className="text-xs font-mono text-zinc-500 mt-0.5 flex gap-2">
-                {getAgentName(task.assigned_agent_id) && (
-                  <span>&rarr; {getAgentName(task.assigned_agent_id)}</span>
-                )}
-                {getAgentName(task.created_by_agent_id) && (
-                  <span className="text-zinc-600">from {getAgentName(task.created_by_agent_id)}</span>
-                )}
+        {topLevel.map((task) => {
+          const subs = getSubTasks(task.id);
+          return (
+            <div key={task.id}>
+              <div className="flex items-start justify-between py-2 px-3 bg-zinc-900/80 border border-zinc-800 rounded-lg group">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-mono text-zinc-100">{task.title}</div>
+                  <div className="text-xs font-mono text-zinc-500 mt-0.5 flex gap-2">
+                    {getAgentName(task.assigned_agent_id) && (
+                      <span>&rarr; {getAgentName(task.assigned_agent_id)}</span>
+                    )}
+                    {getAgentName(task.created_by_agent_id) && (
+                      <span className="text-zinc-600">from {getAgentName(task.created_by_agent_id)}</span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                  <StatusBadge status={task.status} />
+                  <button
+                    onClick={() => updateStatus(task.id, "completed")}
+                    className="text-xs font-mono text-zinc-700 hover:text-green-500 opacity-0 group-hover:opacity-100 transition-all"
+                    title="Mark complete"
+                  >
+                    [done]
+                  </button>
+                </div>
               </div>
+              {subs.length > 0 && (
+                <div className="ml-3 pl-3 border-l border-zinc-800/50 mt-1 space-y-1">
+                  {subs.map((sub) => (
+                    <div
+                      key={sub.id}
+                      className="flex items-start justify-between py-1.5 px-3 bg-zinc-900/40 border border-zinc-800/50 rounded group"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-mono text-zinc-300">{sub.title}</div>
+                        <div className="text-[10px] font-mono text-zinc-600 mt-0.5 flex gap-2">
+                          {getAgentName(sub.assigned_agent_id) && (
+                            <span>&rarr; {getAgentName(sub.assigned_agent_id)}</span>
+                          )}
+                          {getAgentName(sub.created_by_agent_id) && (
+                            <span>from {getAgentName(sub.created_by_agent_id)}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
+                        <StatusBadge status={sub.status} />
+                        <button
+                          onClick={() => updateStatus(sub.id, "completed")}
+                          className="text-[10px] font-mono text-zinc-700 hover:text-green-500 opacity-0 group-hover:opacity-100 transition-all"
+                        >
+                          [done]
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="flex items-center gap-2 ml-2 flex-shrink-0">
-              <StatusBadge status={task.status} />
-              <button
-                onClick={() => updateStatus(task.id, "completed")}
-                className="text-xs font-mono text-zinc-700 hover:text-green-500 opacity-0 group-hover:opacity-100 transition-all"
-                title="Mark complete"
-              >
-                [done]
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
 
         {completed.length > 0 && (
           <div className="pt-2 mt-2 border-t border-zinc-800/50">

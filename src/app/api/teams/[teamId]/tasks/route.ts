@@ -38,6 +38,7 @@ export async function POST(
     description: body.description || null,
     assigned_agent_id: assignedAgent?.id || null,
     created_by_agent_id: body.created_by_agent_id || null,
+    parent_task_id: body.parent_task_id || null,
     status: "pending",
   });
 

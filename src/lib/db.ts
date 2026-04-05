@@ -44,9 +44,10 @@ export function getDb(): Database.Database {
   // Migrations
   try {
     dbInstance.exec("ALTER TABLE tasks ADD COLUMN created_by_agent_id TEXT REFERENCES agents(id)");
-  } catch {
-    // Column already exists
-  }
+  } catch { /* exists */ }
+  try {
+    dbInstance.exec("ALTER TABLE tasks ADD COLUMN parent_task_id TEXT REFERENCES tasks(id)");
+  } catch { /* exists */ }
 
   return dbInstance;
 }
@@ -151,10 +152,16 @@ export function getTasksByTeam(teamId: string): Task[] {
 export function createTask(task: Omit<Task, "created_at" | "completed_at">): Task {
   const db = getDb();
   db.prepare(
-    `INSERT INTO tasks (id, team_id, title, description, assigned_agent_id, created_by_agent_id, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
-  ).run(task.id, task.team_id, task.title, task.description, task.assigned_agent_id, task.created_by_agent_id, task.status);
+    `INSERT INTO tasks (id, team_id, title, description, assigned_agent_id, created_by_agent_id, parent_task_id, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(task.id, task.team_id, task.title, task.description, task.assigned_agent_id, task.created_by_agent_id, task.parent_task_id, task.status);
   return db.prepare("SELECT * FROM tasks WHERE id = ?").get(task.id) as Task;
+}
+
+export function getTasksByParent(parentTaskId: string): Task[] {
+  return getDb()
+    .prepare("SELECT * FROM tasks WHERE parent_task_id = ? ORDER BY created_at ASC")
+    .all(parentTaskId) as Task[];
 }
 
 export function updateTaskStatus(id: string, status: TaskStatus): void {
