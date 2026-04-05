@@ -33,10 +33,17 @@ export default function AgentCard({ agent, teamId, defaultExpanded = false }: Ag
       fetch(`/api/teams/${teamId}/agents/${agent.id}/output?lines=200`)
         .then((res) => res.json())
         .then((data) => {
-          setOutput(data.output || "");
-          // Auto-scroll to bottom
-          if (outputRef.current) {
-            outputRef.current.scrollTop = outputRef.current.scrollHeight;
+          const newOutput = data.output || "";
+          const changed = newOutput !== output;
+          setOutput(newOutput);
+
+          // Only auto-scroll if content changed AND user is near the bottom
+          if (changed && outputRef.current) {
+            const el = outputRef.current;
+            const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+            if (isNearBottom) {
+              el.scrollTop = el.scrollHeight;
+            }
           }
         })
         .catch(console.error);
@@ -45,7 +52,7 @@ export default function AgentCard({ agent, teamId, defaultExpanded = false }: Ag
     fetchOutput();
     const interval = setInterval(fetchOutput, 3000);
     return () => clearInterval(interval);
-  }, [expanded, agent.id, agent.tmux_session, teamId]);
+  }, [expanded, agent.id, agent.tmux_session, teamId, output]);
 
   const MODEL_COLORS: Record<string, string> = {
     opus: "text-purple-400",
