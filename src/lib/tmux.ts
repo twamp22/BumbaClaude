@@ -128,6 +128,11 @@ async function spawnAgentProcess(
     args.push("--model", model);
   }
 
+  // Ensure the working directory exists, create if needed
+  if (!fs.existsSync(workingDir)) {
+    fs.mkdirSync(workingDir, { recursive: true });
+  }
+
   const claudePath = findClaude();
   const child = spawn(claudePath, args, {
     cwd: workingDir,
