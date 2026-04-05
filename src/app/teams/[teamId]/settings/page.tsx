@@ -8,7 +8,9 @@ import Link from "next/link";
 
 interface ContextFile {
   name: string;
-  relativePath: string;
+  fullPath: string;
+  displayPath: string;
+  source: "project" | "ancestor" | "global";
   size: number;
   content: string;
 }
@@ -171,46 +173,75 @@ export default function TeamSettingsPage() {
           Context Files
         </h2>
         <p className="text-xs font-mono text-zinc-500">
-          Files that Claude Code reads for project context from {team.project_dir}
+          Files that Claude Code loads for context. Discovered from project directory,
+          ancestor directories, and global ~/.claude/ config.
         </p>
 
         {contextLoading ? (
           <div className="text-sm font-mono text-zinc-600 py-4 text-center">Scanning...</div>
         ) : contextFiles.length === 0 ? (
           <div className="text-sm font-mono text-zinc-600 py-4 text-center">
-            No context files found in project directory
+            No context files found
           </div>
         ) : (
-          <div className="space-y-1.5">
-            {contextFiles.map((file) => (
-              <div key={file.relativePath} className="border border-zinc-800 rounded-lg overflow-hidden">
-                <button
-                  onClick={() =>
-                    setExpandedFile(expandedFile === file.relativePath ? null : file.relativePath)
-                  }
-                  className="w-full flex items-center justify-between px-3 py-2 hover:bg-zinc-800/50 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono text-zinc-500">
-                      {expandedFile === file.relativePath ? "[-]" : "[+]"}
-                    </span>
-                    <span className="text-sm font-mono text-zinc-200">{file.relativePath}</span>
+          <div className="space-y-4">
+            {(["project", "ancestor", "global"] as const).map((source) => {
+              const files = contextFiles.filter((f) => f.source === source);
+              if (files.length === 0) return null;
+              const sourceLabels = {
+                project: "Project Directory",
+                ancestor: "Ancestor Directories",
+                global: "Global (~/.claude/)",
+              };
+              const sourceColors = {
+                project: "text-green-500",
+                ancestor: "text-blue-400",
+                global: "text-purple-400",
+              };
+              return (
+                <div key={source}>
+                  <div className={`text-xs font-mono ${sourceColors[source]} mb-1.5 uppercase tracking-wider`}>
+                    {sourceLabels[source]}
                   </div>
-                  <span className="text-xs font-mono text-zinc-600">
-                    {file.size < 1024
-                      ? `${file.size} B`
-                      : `${(file.size / 1024).toFixed(1)} KB`}
-                  </span>
-                </button>
-                {expandedFile === file.relativePath && (
-                  <div className="border-t border-zinc-800 bg-black/30 max-h-80 overflow-y-auto">
-                    <pre className="p-3 text-xs font-mono text-zinc-400 whitespace-pre-wrap">
-                      {file.content}
-                    </pre>
+                  <div className="space-y-1">
+                    {files.map((file) => (
+                      <div key={file.fullPath} className="border border-zinc-800 rounded-lg overflow-hidden">
+                        <button
+                          onClick={() =>
+                            setExpandedFile(expandedFile === file.fullPath ? null : file.fullPath)
+                          }
+                          className="w-full flex items-center justify-between px-3 py-2 hover:bg-zinc-800/50 transition-colors"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-xs font-mono text-zinc-500 flex-shrink-0">
+                              {expandedFile === file.fullPath ? "[-]" : "[+]"}
+                            </span>
+                            <span className="text-sm font-mono text-zinc-200 font-bold flex-shrink-0">
+                              {file.name}
+                            </span>
+                            <span className="text-xs font-mono text-zinc-600 truncate">
+                              {file.displayPath}
+                            </span>
+                          </div>
+                          <span className="text-xs font-mono text-zinc-600 flex-shrink-0 ml-2">
+                            {file.size < 1024
+                              ? `${file.size} B`
+                              : `${(file.size / 1024).toFixed(1)} KB`}
+                          </span>
+                        </button>
+                        {expandedFile === file.fullPath && (
+                          <div className="border-t border-zinc-800 bg-black/30 max-h-80 overflow-y-auto">
+                            <pre className="p-3 text-xs font-mono text-zinc-400 whitespace-pre-wrap">
+                              {file.content}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                )}
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
