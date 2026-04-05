@@ -11,6 +11,7 @@ import {
 } from "@/lib/db";
 import { spawnAgent, buildContextFile } from "@/lib/tmux";
 import { startWatching } from "@/lib/watcher";
+import { initTAS, initAgentTAS } from "@/lib/tas";
 
 export async function GET() {
   const teams = getAllTeams();
@@ -46,6 +47,12 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Initialize TAS
+  initTAS(project_dir);
+
+  // Collect agent names for TAS instructions
+  const agentNames: string[] = (agents || []).map((a: { name: string }) => a.name);
+
   // Spawn agents
   const spawnedAgents = [];
   if (agents && Array.isArray(agents)) {
@@ -53,10 +60,13 @@ export async function POST(request: NextRequest) {
       const agentId = uuidv4();
       const sessionName = `bumba-${teamId.slice(0, 8)}-${agentDef.name.toLowerCase().replace(/\s+/g, "-")}`;
 
+      // Initialize TAS directories for this agent
+      initAgentTAS(project_dir, agentDef.name);
+
       // Build isolated context file if isolation is enabled
       let contextFile: string | undefined;
       if (useIsolation) {
-        contextFile = buildContextFile(teamId, agentDef.name, agentDef.role);
+        contextFile = buildContextFile(teamId, agentDef.name, agentDef.role, project_dir, agentNames);
       }
 
       // Each agent gets its own subdirectory under the team's working dir

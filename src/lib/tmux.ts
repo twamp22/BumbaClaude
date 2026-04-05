@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import type { TmuxSession } from "./types";
+import { getTASInstructions } from "./tas";
 
 const IS_WINDOWS = os.platform() === "win32";
 const LOG_DIR = path.join(process.cwd(), "data", "agent-logs");
@@ -118,37 +119,44 @@ export const MEMORY_DIR = path.join(process.cwd(), "data", "memory");
  * Build the context file for an isolated agent.
  * Combines team instructions + agent role into a single file.
  */
-export function buildContextFile(teamId: string, agentName: string, role: string): string {
+export function buildContextFile(teamId: string, agentName: string, role: string, projectDir?: string, allAgentNames?: string[]): string {
   if (!fs.existsSync(MEMORY_DIR)) {
     fs.mkdirSync(MEMORY_DIR, { recursive: true });
   }
 
-  const teamDir = path.join(MEMORY_DIR, teamId);
-  if (!fs.existsSync(teamDir)) {
-    fs.mkdirSync(teamDir, { recursive: true });
+  const memoryTeamDir = path.join(MEMORY_DIR, teamId);
+  if (!fs.existsSync(memoryTeamDir)) {
+    fs.mkdirSync(memoryTeamDir, { recursive: true });
   }
 
   // Load team-level custom instructions if they exist
-  const teamInstructionsPath = path.join(teamDir, "instructions.md");
+  const teamInstructionsPath = path.join(memoryTeamDir, "instructions.md");
   const teamInstructions = fs.existsSync(teamInstructionsPath)
     ? fs.readFileSync(teamInstructionsPath, "utf-8")
     : "";
 
   // Load agent-specific memory if it exists
   const agentSlug = agentName.toLowerCase().replace(/\s+/g, "-");
-  const agentMemoryPath = path.join(teamDir, `agent-${agentSlug}.md`);
+  const agentMemoryPath = path.join(memoryTeamDir, `agent-${agentSlug}.md`);
   const agentMemory = fs.existsSync(agentMemoryPath)
     ? fs.readFileSync(agentMemoryPath, "utf-8")
     : "";
+
+  // Build TAS instructions if project directory is provided
+  let tasInstructions = "";
+  if (projectDir && allAgentNames) {
+    tasInstructions = getTASInstructions(projectDir, agentName, allAgentNames);
+  }
 
   // Compose the context file
   const parts: string[] = [];
   parts.push(`# Agent: ${agentName}`);
   parts.push(`## Role\n${role}`);
   if (teamInstructions) parts.push(`## Team Instructions\n${teamInstructions}`);
+  if (tasInstructions) parts.push(tasInstructions);
   if (agentMemory) parts.push(`## Agent Memory\n${agentMemory}`);
 
-  const contextPath = path.join(teamDir, `context-${agentSlug}.md`);
+  const contextPath = path.join(memoryTeamDir, `context-${agentSlug}.md`);
   fs.writeFileSync(contextPath, parts.join("\n\n"));
   return contextPath;
 }
