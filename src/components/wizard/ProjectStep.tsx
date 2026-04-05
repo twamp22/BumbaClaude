@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import type { WizardState } from "@/app/teams/new/page";
 
 interface ProjectStepProps {
@@ -9,6 +10,40 @@ interface ProjectStepProps {
 }
 
 export default function ProjectStep({ state, updateState, onNext }: ProjectStepProps) {
+  const [baseDir, setBaseDir] = useState("");
+  const [dirManuallyEdited, setDirManuallyEdited] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/config")
+      .then((res) => res.json())
+      .then((data) => {
+        const dir = data.default_working_dir || "";
+        setBaseDir(dir);
+        if (!state.project_dir) {
+          updateState({ project_dir: dir });
+        }
+      })
+      .catch(console.error);
+    // Only run on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleNameChange = (name: string) => {
+    updateState({ name });
+
+    // Auto-update working directory if not manually edited
+    if (!dirManuallyEdited && baseDir) {
+      const slug = name.trim().replace(/\s+/g, "_");
+      const newDir = slug ? `${baseDir}\\${slug}` : baseDir;
+      updateState({ project_dir: newDir });
+    }
+  };
+
+  const handleDirChange = (dir: string) => {
+    setDirManuallyEdited(true);
+    updateState({ project_dir: dir });
+  };
+
   const canProceed = state.name.trim() && state.project_dir.trim();
 
   return (
@@ -18,7 +53,7 @@ export default function ProjectStep({ state, updateState, onNext }: ProjectStepP
         <input
           type="text"
           value={state.name}
-          onChange={(e) => updateState({ name: e.target.value })}
+          onChange={(e) => handleNameChange(e.target.value)}
           placeholder="my-feature-team"
           className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm font-mono text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500"
         />
@@ -29,10 +64,15 @@ export default function ProjectStep({ state, updateState, onNext }: ProjectStepP
         <input
           type="text"
           value={state.project_dir}
-          onChange={(e) => updateState({ project_dir: e.target.value })}
+          onChange={(e) => handleDirChange(e.target.value)}
           placeholder="Loading default..."
           className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm font-mono text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500"
         />
+        {!dirManuallyEdited && state.name.trim() && (
+          <p className="text-xs font-mono text-zinc-600 mt-1">
+            Auto-generated from team name. Edit to customize.
+          </p>
+        )}
       </div>
 
       <div>

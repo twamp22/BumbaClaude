@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ProjectStep from "@/components/wizard/ProjectStep";
 import RolesStep from "@/components/wizard/RolesStep";
@@ -50,18 +50,6 @@ export default function NewTeamPage() {
       isolated: true,
     },
   });
-
-  useEffect(() => {
-    fetch("/api/config")
-      .then((res) => res.json())
-      .then((data) => {
-        setState((prev) => ({
-          ...prev,
-          project_dir: prev.project_dir || data.default_working_dir,
-        }));
-      })
-      .catch(console.error);
-  }, []);
 
   const updateState = (partial: Partial<WizardState>) => {
     setState((prev) => ({ ...prev, ...partial }));
