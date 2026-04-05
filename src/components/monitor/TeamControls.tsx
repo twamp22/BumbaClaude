@@ -44,7 +44,7 @@ export default function TeamControls({ team, onRefresh }: TeamControlsProps) {
 
   const deleteTeam = async () => {
     await fetch(`/api/teams/${team.id}`, { method: "DELETE" });
-    router.push("/");
+    window.location.href = "/";
   };
 
   if (team.status === "completed" || team.status === "errored") {

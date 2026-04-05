@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
-import { getAgentsByTeam, getTeam, createAgent, createAuditEvent } from "@/lib/db";
+import { getAgentsByTeam, getTeam, createAgent, createAuditEvent, updateAgentStatus } from "@/lib/db";
 import { spawnAgent } from "@/lib/tmux";
 
 export async function GET(
@@ -34,6 +34,15 @@ export async function POST(
       prompt: body.role,
       systemPrompt: body.system_prompt || undefined,
       model: body.model_tier,
+      onExit: (code) => {
+        updateAgentStatus(agentId, code === 0 ? "completed" : "errored");
+        createAuditEvent({
+          team_id: teamId,
+          agent_id: agentId,
+          event_type: code === 0 ? "agent_completed" : "agent_errored",
+          event_data: JSON.stringify({ exit_code: code }),
+        });
+      },
     });
     tmuxSession = result.paneId;
   } catch (error) {

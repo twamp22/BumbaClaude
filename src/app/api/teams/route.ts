@@ -6,6 +6,7 @@ import {
   createAgent,
   createGovernanceRule,
   createAuditEvent,
+  updateAgentStatus,
 } from "@/lib/db";
 import { spawnAgent } from "@/lib/tmux";
 import { startWatching } from "@/lib/watcher";
@@ -56,6 +57,15 @@ export async function POST(request: NextRequest) {
           prompt: agentDef.role,
           systemPrompt: agentDef.system_prompt || undefined,
           model: agentDef.model_tier,
+          onExit: (code) => {
+            updateAgentStatus(agentId, code === 0 ? "completed" : "errored");
+            createAuditEvent({
+              team_id: teamId,
+              agent_id: agentId,
+              event_type: code === 0 ? "agent_completed" : "agent_errored",
+              event_data: JSON.stringify({ exit_code: code }),
+            });
+          },
         });
         tmuxSession = result.paneId;
       } catch (error) {

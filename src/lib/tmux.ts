@@ -75,6 +75,7 @@ export async function spawnAgent(config: {
   prompt?: string;
   systemPrompt?: string;
   model?: string;
+  onExit?: (code: number | null) => void;
 }): Promise<{ sessionId: string; paneId: string }> {
   if (!IS_WINDOWS && isTmuxAvailable()) {
     return spawnAgentTmux(config);
@@ -119,6 +120,7 @@ async function spawnAgentProcess(config: {
   prompt?: string;
   systemPrompt?: string;
   model?: string;
+  onExit?: (code: number | null) => void;
 }): Promise<{ sessionId: string; paneId: string }> {
   const { sessionName, workingDir } = config;
   ensureLogDir();
@@ -126,19 +128,18 @@ async function spawnAgentProcess(config: {
   const logFile = path.join(LOG_DIR, `${sessionName}.log`);
   fs.writeFileSync(logFile, "");
 
-  const args: string[] = ["-p"];
+  // Role goes in --append-system-prompt, task goes in -p
+  const args: string[] = [];
 
-  // Build the prompt: combine system prompt (role) and user prompt
-  const promptParts: string[] = [];
-  if (config.systemPrompt) promptParts.push(config.systemPrompt);
-  if (config.prompt) promptParts.push(config.prompt);
-  args.push(promptParts.join("\n\n") || "Hello, ready to work.");
+  if (config.prompt) {
+    args.push("--append-system-prompt", config.prompt);
+  }
+
+  // The -p prompt is the actual task instruction
+  args.push("-p", config.systemPrompt || "Review the project in this directory and begin working on your assigned role.");
 
   if (config.model) {
     args.push("--model", config.model);
-  }
-  if (config.systemPrompt) {
-    args.push("--append-system-prompt", config.systemPrompt);
   }
 
   // Ensure the working directory exists, create if needed
@@ -171,6 +172,7 @@ async function spawnAgentProcess(config: {
 
   child.on("exit", (code) => {
     logStream.write(`\n[PROCESS EXITED] code=${code}\n`);
+    if (config.onExit) config.onExit(code);
     logStream.end();
     activeProcesses.delete(sessionName);
   });

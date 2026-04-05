@@ -18,7 +18,7 @@ export default function TeamCard({ team, agentCount, taskCount }: TeamCardProps)
     e.preventDefault();
     e.stopPropagation();
     await fetch(`/api/teams/${team.id}`, { method: "DELETE" });
-    router.refresh();
+    window.location.reload();
   };
 
   return (
