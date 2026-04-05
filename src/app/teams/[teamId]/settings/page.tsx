@@ -25,6 +25,8 @@ export default function TeamSettingsPage() {
   const [instructions, setInstructions] = useState("");
   const [instructionsSaved, setInstructionsSaved] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [rebuilding, setRebuilding] = useState(false);
+  const [rebuildMsg, setRebuildMsg] = useState("");
 
   useEffect(() => {
     fetch(`/api/teams/${teamId}/memory`)
@@ -68,9 +70,6 @@ export default function TeamSettingsPage() {
     const rule = governance.find((r) => r.rule_type === "max_turns");
     return rule?.rule_value || "25";
   };
-
-  const [rebuilding, setRebuilding] = useState(false);
-  const [rebuildMsg, setRebuildMsg] = useState("");
 
   const rebuild = async () => {
     setRebuilding(true);
