@@ -1,14 +1,35 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTeamStatus } from "@/hooks/useTeamStatus";
 import StatusBadge from "@/components/shared/StatusBadge";
 import Link from "next/link";
 
+interface ContextFile {
+  name: string;
+  relativePath: string;
+  size: number;
+  content: string;
+}
+
 export default function TeamSettingsPage() {
   const { teamId } = useParams<{ teamId: string }>();
   const router = useRouter();
   const { team, agents, governance, loading } = useTeamStatus(teamId);
+  const [contextFiles, setContextFiles] = useState<ContextFile[]>([]);
+  const [expandedFile, setExpandedFile] = useState<string | null>(null);
+  const [contextLoading, setContextLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/teams/${teamId}/context-files`)
+      .then((res) => res.json())
+      .then((data) => {
+        setContextFiles(data.files || []);
+        setContextLoading(false);
+      })
+      .catch(() => setContextLoading(false));
+  }, [teamId]);
 
   if (loading) {
     return (
@@ -142,6 +163,56 @@ export default function TeamSettingsPage() {
             <span className="text-zinc-200">{getMaxTurns()}</span>
           </div>
         </div>
+      </div>
+
+      {/* Context Files */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 space-y-3">
+        <h2 className="font-mono font-bold text-zinc-300 text-sm uppercase tracking-wider">
+          Context Files
+        </h2>
+        <p className="text-xs font-mono text-zinc-500">
+          Files that Claude Code reads for project context from {team.project_dir}
+        </p>
+
+        {contextLoading ? (
+          <div className="text-sm font-mono text-zinc-600 py-4 text-center">Scanning...</div>
+        ) : contextFiles.length === 0 ? (
+          <div className="text-sm font-mono text-zinc-600 py-4 text-center">
+            No context files found in project directory
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            {contextFiles.map((file) => (
+              <div key={file.relativePath} className="border border-zinc-800 rounded-lg overflow-hidden">
+                <button
+                  onClick={() =>
+                    setExpandedFile(expandedFile === file.relativePath ? null : file.relativePath)
+                  }
+                  className="w-full flex items-center justify-between px-3 py-2 hover:bg-zinc-800/50 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono text-zinc-500">
+                      {expandedFile === file.relativePath ? "[-]" : "[+]"}
+                    </span>
+                    <span className="text-sm font-mono text-zinc-200">{file.relativePath}</span>
+                  </div>
+                  <span className="text-xs font-mono text-zinc-600">
+                    {file.size < 1024
+                      ? `${file.size} B`
+                      : `${(file.size / 1024).toFixed(1)} KB`}
+                  </span>
+                </button>
+                {expandedFile === file.relativePath && (
+                  <div className="border-t border-zinc-800 bg-black/30 max-h-80 overflow-y-auto">
+                    <pre className="p-3 text-xs font-mono text-zinc-400 whitespace-pre-wrap">
+                      {file.content}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Danger zone */}
