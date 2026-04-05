@@ -1,23 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
-import { getAllTeams } from "@/lib/db";
-import TeamNavItem from "@/components/shared/TeamNavItem";
+import SidebarTeamList from "@/components/shared/SidebarTeamList";
 
 export const metadata: Metadata = {
   title: "BumbaClaude - Mission Control",
   description: "Mission control for Claude Code multi-agent workflows",
 };
 
-export const dynamic = "force-dynamic";
-
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const teams = getAllTeams();
-
   return (
     <html lang="en" className="dark">
       <body className="bg-zinc-950 text-zinc-100 min-h-screen antialiased">
@@ -54,16 +49,7 @@ export default function RootLayout({
                 Templates
               </Link>
 
-              {teams.length > 0 && (
-                <div className="pt-3 mt-3 border-t border-zinc-800">
-                  <div className="px-3 py-1 text-xs font-mono text-zinc-600 uppercase tracking-wider">
-                    Teams
-                  </div>
-                  {teams.slice(0, 10).map((team) => (
-                    <TeamNavItem key={team.id} team={team} />
-                  ))}
-                </div>
-              )}
+              <SidebarTeamList />
             </nav>
 
             <div className="p-3 border-t border-zinc-800 text-xs font-mono text-zinc-600">
