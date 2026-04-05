@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
+import path from "path";
 import { getAgentsByTeam, getTeam, createAgent, createAuditEvent, updateAgentStatus } from "@/lib/db";
 import { spawnAgent } from "@/lib/tmux";
 
@@ -26,11 +27,15 @@ export async function POST(
   const agentId = uuidv4();
   const sessionName = `bumba-${teamId.slice(0, 8)}-${body.name.toLowerCase().replace(/\s+/g, "-")}`;
 
+  // Each agent gets its own subdirectory under the team's working dir
+  const agentSlug = body.name.replace(/\s+/g, "_");
+  const agentWorkingDir = path.join(team.project_dir, agentSlug);
+
   let tmuxSession: string | null = null;
   try {
     const result = await spawnAgent({
       sessionName,
-      workingDir: team.project_dir,
+      workingDir: agentWorkingDir,
       prompt: body.role,
       systemPrompt: body.system_prompt || undefined,
       model: body.model_tier,
