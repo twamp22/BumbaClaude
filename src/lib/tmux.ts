@@ -154,22 +154,16 @@ export function buildContextFile(teamId: string, agentName: string, role: string
  * Map governance rules to --allowedTools flags.
  */
 function buildAllowedTools(governance?: Record<string, string>): string[] {
-  const tools: string[] = ["Read", "Glob", "Grep", "WebSearch"];
+  const tools: string[] = ["Read", "Glob", "Grep", "WebSearch", "WebFetch"];
 
   const canCreateFiles = governance?.can_create_files !== "false";
   const canRunCommands = governance?.can_run_commands !== "false";
-  const canPushGit = governance?.can_push_git !== "false";
 
   if (canCreateFiles) {
-    tools.push("Edit", "Write");
+    tools.push("Edit", "Write", "NotebookEdit");
   }
   if (canRunCommands) {
-    if (canPushGit) {
-      tools.push("Bash");
-    } else {
-      tools.push("Bash");
-      // Note: git push restriction would need disallowedTools pattern
-    }
+    tools.push("Bash");
   }
 
   return tools;
@@ -252,7 +246,7 @@ function runClaudeProcess(opts: {
       args.push("--system-prompt-file", opts.contextFile);
     }
     if (opts.allowedTools && opts.allowedTools.length > 0) {
-      args.push("--allowedTools", ...opts.allowedTools);
+      args.push("--allowedTools", opts.allowedTools.join(" "));
     }
     args.push("--permission-mode", "auto");
     // Don't use --no-session-persistence: we need sessions saved for --resume
