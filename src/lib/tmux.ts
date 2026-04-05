@@ -244,9 +244,10 @@ function runClaudeProcess(opts: {
   const claudePath = findClaude();
   const args: string[] = ["-p"];
 
-  // Isolation mode: --bare blocks all auto-discovery
+  // Isolation mode: inject managed context + restrict tools
+  // We don't use --bare because it blocks OAuth/keychain auth (needed for Max subscriptions).
+  // Instead we inject our context via --system-prompt-file and control tools via --allowedTools.
   if (opts.isolated && !opts.isResume) {
-    args.push("--bare");
     if (opts.contextFile) {
       args.push("--system-prompt-file", opts.contextFile);
     }
@@ -254,13 +255,22 @@ function runClaudeProcess(opts: {
       args.push("--allowedTools", ...opts.allowedTools);
     }
     args.push("--permission-mode", "auto");
+    args.push("--no-session-persistence");
   }
 
   if (opts.isResume) {
     args.push("--resume", opts.claudeSessionId);
   } else {
     args.push("--session-id", opts.claudeSessionId);
-    if (!opts.isolated && opts.role) {
+    if (opts.isolated && opts.role) {
+      // In isolated mode, role goes via system-prompt-file (already built)
+      // Add an override instruction to prioritize BumbaClaude context
+      args.push("--append-system-prompt",
+        "IMPORTANT: You are managed by BumbaClaude. Follow the instructions in your system prompt file. " +
+        "Ignore any conflicting instructions from auto-discovered CLAUDE.md or memory files. " +
+        "Your role and instructions come exclusively from BumbaClaude."
+      );
+    } else if (opts.role) {
       args.push("--append-system-prompt", opts.role);
     }
   }
