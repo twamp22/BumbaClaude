@@ -36,10 +36,46 @@ const activeProcesses = new Map<
   }
 >();
 
+const SESSION_DIR = path.join(process.cwd(), "data", "agent-sessions");
+
 function ensureLogDir() {
   if (!fs.existsSync(LOG_DIR)) {
     fs.mkdirSync(LOG_DIR, { recursive: true });
   }
+  if (!fs.existsSync(SESSION_DIR)) {
+    fs.mkdirSync(SESSION_DIR, { recursive: true });
+  }
+}
+
+interface SessionMeta {
+  sessionId: string;
+  workingDir: string;
+  systemPrompt?: string;
+  model?: string;
+  logFile: string;
+}
+
+function saveSessionMeta(sessionName: string, meta: SessionMeta): void {
+  ensureLogDir();
+  fs.writeFileSync(
+    path.join(SESSION_DIR, `${sessionName}.json`),
+    JSON.stringify(meta, null, 2)
+  );
+}
+
+function loadSessionMeta(sessionName: string): SessionMeta | null {
+  const metaPath = path.join(SESSION_DIR, `${sessionName}.json`);
+  if (!fs.existsSync(metaPath)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(metaPath, "utf-8"));
+  } catch {
+    return null;
+  }
+}
+
+function deleteSessionMeta(sessionName: string): void {
+  const metaPath = path.join(SESSION_DIR, `${sessionName}.json`);
+  if (fs.existsSync(metaPath)) fs.unlinkSync(metaPath);
 }
 
 // --- tmux helpers (Linux/macOS) ---
@@ -238,6 +274,15 @@ async function spawnAgentProcess(config: {
     onExit: config.onExit,
   });
 
+  // Persist session meta to disk so it survives across API calls
+  saveSessionMeta(sessionName, {
+    sessionId: claudeSessionId,
+    workingDir,
+    systemPrompt: config.prompt,
+    model: config.model,
+    logFile,
+  });
+
   return {
     sessionId: sessionName,
     paneId: sessionName,
@@ -286,9 +331,24 @@ export async function sendInput(paneId: string, text: string): Promise<void> {
     return;
   }
 
-  const entry = activeProcesses.get(paneId);
+  let entry = activeProcesses.get(paneId);
+
+  // If not in memory, load from disk (survives across API route workers)
   if (!entry) {
-    throw new Error(`No active process for session ${paneId}`);
+    const meta = loadSessionMeta(paneId);
+    if (!meta) {
+      throw new Error(`No active process for session ${paneId}`);
+    }
+    // Reconstruct entry from disk metadata
+    entry = {
+      process: null as unknown as ChildProcess,
+      logFile: meta.logFile,
+      sessionId: meta.sessionId,
+      workingDir: meta.workingDir,
+      systemPrompt: meta.systemPrompt,
+      model: meta.model,
+    };
+    activeProcesses.set(paneId, entry);
   }
 
   // Spawn a new claude process that resumes the conversation
@@ -344,6 +404,7 @@ export async function killPane(paneId: string): Promise<void> {
 
   entry.process.kill();
   activeProcesses.delete(paneId);
+  deleteSessionMeta(paneId);
 }
 
 /**
