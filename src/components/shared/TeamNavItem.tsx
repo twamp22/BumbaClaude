@@ -52,6 +52,12 @@ export default function TeamNavItem({ team }: TeamNavItemProps) {
       disabled: !isActive,
     },
     {
+      label: "Rebuild Context",
+      onClick: async () => {
+        await fetch(`/api/teams/${team.id}/rebuild`, { method: "POST" });
+      },
+    },
+    {
       label: "Audit Log",
       onClick: () => { window.location.href = `/teams/${team.id}/audit`; },
     },

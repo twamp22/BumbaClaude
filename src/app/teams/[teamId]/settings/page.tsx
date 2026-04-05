@@ -69,6 +69,23 @@ export default function TeamSettingsPage() {
     return rule?.rule_value || "25";
   };
 
+  const [rebuilding, setRebuilding] = useState(false);
+  const [rebuildMsg, setRebuildMsg] = useState("");
+
+  const rebuild = async () => {
+    setRebuilding(true);
+    setRebuildMsg("");
+    try {
+      const res = await fetch(`/api/teams/${teamId}/rebuild`, { method: "POST" });
+      const data = await res.json();
+      setRebuildMsg(data.message || "Rebuilt");
+    } catch {
+      setRebuildMsg("Failed to rebuild");
+    } finally {
+      setRebuilding(false);
+    }
+  };
+
   const deleteTeam = async () => {
     await fetch(`/api/teams/${team.id}`, { method: "DELETE" });
     window.location.href = "/";
@@ -96,6 +113,18 @@ export default function TeamSettingsPage() {
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold font-mono">{team.name}</h1>
           <StatusBadge status={team.status} />
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={rebuild}
+            disabled={rebuilding}
+            className="px-4 py-1.5 text-sm font-mono bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg border border-blue-600/30 transition-colors disabled:opacity-50"
+          >
+            {rebuilding ? "Rebuilding..." : "Rebuild Context"}
+          </button>
+          {rebuildMsg && (
+            <span className="text-xs font-mono text-zinc-500">{rebuildMsg}</span>
+          )}
         </div>
       </div>
 
