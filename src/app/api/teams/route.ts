@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
   // Initialize TAS and generate shared system prompt
   initTAS(project_dir);
   const agentNames: string[] = (agents || []).map((a: { name: string }) => a.name);
-  generateBumbaSystemPrompt(project_dir, teamId, agentNames);
+  generateBumbaSystemPrompt({ teamDir: project_dir, teamId, agentNames, governance: governanceMap });
 
   // Spawn agents
   const spawnedAgents = [];
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       // Build isolated context file if isolation is enabled
       let contextFile: string | undefined;
       if (useIsolation) {
-        contextFile = buildContextFile(teamId, agentDef.name, agentDef.role, project_dir, agentNames);
+        contextFile = buildContextFile(teamId, agentDef.name, agentDef.role, project_dir, agentNames, governanceMap);
       }
 
       // Each agent gets its own subdirectory under the team's working dir

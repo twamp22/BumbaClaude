@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import type { TmuxSession } from "./types";
-import { getAgentContext } from "./tas";
+import { getAgentContext, generateBumbaSystemPrompt } from "./tas";
 import { getAgentBySession, getTeam } from "./db";
 
 const IS_WINDOWS = os.platform() === "win32";
@@ -31,7 +31,7 @@ const activeProcesses = new Map<
     logFile: string;
     sessionId: string;
     workingDir: string;
-    systemPrompt?: string;
+    role?: string;
     model?: string;
     allowedTools?: string[];
     agentId?: string;
@@ -49,7 +49,7 @@ function ensureDir(dirPath: string) {
 interface SessionMeta {
   sessionId: string;
   workingDir: string;
-  systemPrompt?: string;
+  role?: string;
   model?: string;
   logFile: string;
   isolated?: boolean;
@@ -143,18 +143,27 @@ export function getTeamMemoryDir(projectDir: string): string {
 
 /**
  * Build the context file for an isolated agent.
- * Combines team instructions + agent role into a single file.
+ * Inlines the full BUMBA.md system instructions + agent role into a single
+ * self-contained file. No external file reads required on agent startup.
  */
-export function buildContextFile(teamId: string, agentName: string, role: string, projectDir?: string, allAgentNames?: string[]): string {
-  if (!projectDir) {
-    throw new Error("projectDir is required to build context file");
-  }
-
+export function buildContextFile(
+  teamId: string,
+  agentName: string,
+  role: string,
+  projectDir: string,
+  allAgentNames: string[],
+  governance?: Record<string, string>,
+): string {
   const memoryDir = getTeamMemoryDir(projectDir);
   ensureDir(memoryDir);
 
-  // Reference the shared BUMBA.md (source of truth for all agents)
-  const bumbaPath = path.join(projectDir, "BUMBA.md").replace(/\\/g, "/");
+  // Generate the BUMBA.md content (also writes to disk for human reference)
+  const bumbaContent = generateBumbaSystemPrompt({
+    teamDir: projectDir,
+    teamId,
+    agentNames: allAgentNames,
+    governance,
+  });
 
   // Load team-level custom instructions if they exist
   const teamInstructionsPath = path.join(memoryDir, "instructions.md");
@@ -170,15 +179,12 @@ export function buildContextFile(teamId: string, agentName: string, role: string
     : "";
 
   // Build agent-specific context (identity, paths, teammates)
-  let agentContext = "";
-  if (allAgentNames) {
-    agentContext = getAgentContext(projectDir, agentName, allAgentNames);
-  }
+  const agentContext = getAgentContext(projectDir, agentName, allAgentNames);
 
-  // Compose the context file -- reference shared BUMBA.md, then agent-specific details
+  // Compose the context file -- inline BUMBA.md content, then agent-specific details
   const parts: string[] = [];
+  parts.push(bumbaContent);
   parts.push(`# Agent: ${agentName}`);
-  parts.push(`**Read \`${bumbaPath}\` before doing anything.** It contains the system instructions all agents on this team must follow, including TAS usage, ping protocol, and file cleanup rules.`);
   parts.push(`## Role\n${role}`);
   if (agentContext) parts.push(agentContext);
   if (teamInstructions) parts.push(`## Team Instructions\n${teamInstructions}`);
@@ -299,10 +305,13 @@ function runClaudeProcess(opts: {
 
   if (opts.isResume) {
     args.push("--resume", opts.claudeSessionId);
-    // Remind agent to re-read BUMBA.md on resume for ping/TAS/cleanup rules
+    // Reinforce critical rules on resume since conversation compression may have dropped them
     args.push("--append-system-prompt",
-      "REMINDER: Re-read BUMBA.md in the team directory for ping, TAS, and cleanup rules. " +
-      "You MUST use Bash to run a curl command to ping other agents. Writing files does not wake them."
+      "REMINDER: You are a BumbaClaude agent. Key rules: " +
+      "(1) Ping other agents using Bash + curl -- writing files does not wake them. " +
+      "(2) Clean your inbox after consuming files. " +
+      "(3) If there is no work to do, stop and wait -- do not self-assign tasks. " +
+      "(4) Messages prefixed [USER] are from the human operator and take priority."
     );
   } else {
     args.push("--session-id", opts.claudeSessionId);
@@ -392,7 +401,7 @@ async function spawnAgentProcess(config: {
   fs.writeFileSync(logFile, "");
 
   const initialPrompt = config.systemPrompt
-    || "Review the project in this directory and begin working on your assigned role.";
+    || "Check your TAS inbox for pending work. If empty, review the project in your working directory and wait for instructions.";
 
   const allowedTools = config.isolated ? buildAllowedTools(config.governance) : undefined;
 
@@ -417,7 +426,7 @@ async function spawnAgentProcess(config: {
     logFile,
     sessionId: claudeSessionId,
     workingDir,
-    systemPrompt: config.prompt,
+    role: config.prompt,
     model: config.model,
     allowedTools,
     agentId: config.agentId,
@@ -429,7 +438,7 @@ async function spawnAgentProcess(config: {
   saveSessionMeta({
     sessionId: claudeSessionId,
     workingDir,
-    systemPrompt: config.prompt,
+    role: config.prompt,
     model: config.model,
     logFile,
     isolated: config.isolated,
@@ -505,7 +514,7 @@ export async function sendInput(paneId: string, text: string): Promise<void> {
       logFile: meta.logFile,
       sessionId: meta.sessionId,
       workingDir: meta.workingDir,
-      systemPrompt: meta.systemPrompt,
+      role: meta.role,
       model: meta.model,
       allowedTools: meta.allowedTools,
       agentId: meta.agentId,

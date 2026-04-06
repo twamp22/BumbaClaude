@@ -70,9 +70,9 @@ export async function POST(
     // Just wake the target agent with the message, no new task
     if (toAgent.tmux_session) {
       try {
-        let msg = `PING from ${from_agent_name || "User"}: ${task_title || "Task completed"}`;
-        if (task_description) msg += `\n\nDetails: ${task_description}`;
-        if (tas_file) msg += `\n\nFile: ${tas_file}`;
+        let msg = `[AGENT PING] Completion from ${from_agent_name || "User"}: ${task_title || "Task completed"}`;
+        if (task_description) msg += `\nDetails: ${task_description}`;
+        if (tas_file) msg += `\nFile: ${tas_file}`;
         await sendInput(toAgent.tmux_session, msg);
       } catch (error) {
         console.error(`Failed to ping agent ${toAgent.name}:`, error);
@@ -98,9 +98,9 @@ export async function POST(
   if (ping_type === "status_update") {
     if (toAgent.tmux_session) {
       try {
-        let msg = `UPDATE from ${from_agent_name || "User"}: ${task_title || "Status update"}`;
-        if (task_description) msg += `\n\nDetails: ${task_description}`;
-        if (tas_file) msg += `\n\nFile: ${tas_file}`;
+        let msg = `[AGENT UPDATE] From ${from_agent_name || "User"}: ${task_title || "Status update"}`;
+        if (task_description) msg += `\nDetails: ${task_description}`;
+        if (tas_file) msg += `\nFile: ${tas_file}`;
         await sendInput(toAgent.tmux_session, msg);
       } catch (error) {
         console.error(`Failed to ping agent ${toAgent.name}:`, error);
@@ -180,10 +180,9 @@ export async function POST(
   // Wake the target agent
   if (toAgent.tmux_session) {
     try {
-      let pingMessage = `PING from ${from_agent_name || "User"}: ${task_title || "New task assigned"}`;
-      if (task_description) pingMessage += `\n\nDetails: ${task_description}`;
-      if (tas_file) pingMessage += `\n\nFile ready at: ${tas_file}`;
-      pingMessage += `\n\nPlease begin working on this immediately.`;
+      let pingMessage = `[AGENT PING] Assignment from ${from_agent_name || "User"}: ${task_title || "New task assigned"}`;
+      if (task_description) pingMessage += `\nDetails: ${task_description}`;
+      if (tas_file) pingMessage += `\nFile ready at: ${tas_file}`;
 
       await sendInput(toAgent.tmux_session, pingMessage);
       updateTaskStatus(taskId, "in_progress");

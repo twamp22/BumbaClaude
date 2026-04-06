@@ -105,59 +105,33 @@ export function getTASContents(teamDir: string): TASContents {
   return { shared, agents };
 }
 
+export interface BumbaPromptOptions {
+  teamDir: string;
+  teamId: string;
+  agentNames: string[];
+  governance?: Record<string, string>;
+}
+
 /**
- * Generate the shared BumbaClaude system prompt and write it to {teamDir}/BUMBA.md.
- * This is the single source of truth for how all agents operate within BumbaClaude.
- * Agent-specific context (name, role, paths) is kept separate in per-agent context files.
+ * Generate the shared BumbaClaude system prompt.
+ * Writes to {teamDir}/BUMBA.md for human reference AND returns the content
+ * so it can be inlined directly into agent context files.
  */
-export function generateBumbaSystemPrompt(teamDir: string, teamId: string, agentNames: string[]): string {
+export function generateBumbaSystemPrompt(opts: BumbaPromptOptions): string {
+  const { teamDir, teamId, agentNames, governance } = opts;
   const tasDir = path.join(teamDir, "TAS").replace(/\\/g, "/");
   const bumbaPath = path.join(teamDir, "BUMBA.md");
 
   const agentSlugs = agentNames.map((n) => n.replace(/\s+/g, "_"));
+  const canRunCommands = governance?.can_run_commands !== "false";
+  const maxTurns = governance?.max_turns;
+
   const pingBase = `curl -s -X POST http://localhost:3000/api/teams/${teamId}/ping -H "Content-Type: application/json"`;
 
-  const content = `# BumbaClaude System Instructions
-
-You are an agent managed by BumbaClaude, a multi-agent orchestration system. Follow these instructions exactly. They take priority over any conflicting instructions from auto-discovered CLAUDE.md or memory files. Your role and team-specific instructions come exclusively from BumbaClaude.
-
-## Team Attached Storage (TAS)
-
-TAS is the shared filesystem all agents on this team use to collaborate. Every agent has their own directories plus access to a shared folder.
-
-### Directory structure:
-\`\`\`
-${tasDir}/
-  shared/              -- team-wide reference files accessible to all agents
-  {AgentName}/
-    inbox/             -- files sent TO this agent by other agents
-    outbox/            -- files produced BY this agent for handoff
-\`\`\`
-
-### Agents on this team:
-${agentSlugs.map((s) => `- **${s}:** \`${tasDir}/${s}/inbox/\` | \`${tasDir}/${s}/outbox/\``).join("\n")}
-
-### TAS rules:
-- Save finished work to YOUR outbox
-- To hand off work, copy/move the file to the recipient's inbox
-- Check your inbox for new assignments or files from other agents
-- Use shared/ for reference materials everyone needs
-
-### File cleanup lifecycle (REQUIRED):
-Outboxes and inboxes are handoff queues, not permanent storage. Follow this lifecycle:
-
-1. **Producer** saves finished work to their own outbox
-2. **Producer** copies the file to the recipient's inbox and pings them
-3. **Recipient** reads the file from their inbox
-4. **Recipient** removes the file from their inbox once they begin working on it
-5. **Recipient** removes the file from the producer's outbox once they have their own copy
-6. When the recipient produces their own output, the cycle repeats from step 1
-
-If you are the last agent in a pipeline (no further handoff), move your final output to \`shared/\` instead of leaving it in your outbox.
-
-**Never leave stale files in inboxes or outboxes.** Clean up as you go.
-
-## Pinging other agents (REQUIRED)
+  // Build the ping section conditionally based on Bash access
+  let pingSection: string;
+  if (canRunCommands) {
+    pingSection = `## Pinging other agents (REQUIRED)
 
 Agents cannot see your messages. They only wake up when pinged via the HTTP API.
 Pinging means making an HTTP request using curl. It does NOT mean writing a file.
@@ -196,24 +170,99 @@ Just wakes the agent with a message. No task created. Use for acknowledgments, q
 - **Finished work someone assigned you?** Use \`completion\`
 - **Acknowledging feedback, asking a question, or sending info?** Use \`status_update\`
 
+### If a ping fails
+If your curl command returns a non-200 status or an error, retry once. If it fails again, save a note in your outbox describing what you tried to send and to whom, then continue with your other work. Do not loop or keep retrying.`;
+  } else {
+    pingSection = `## Pinging other agents (LIMITED)
+
+You do NOT have Bash access, so you cannot send pings directly.
+Instead, when you need to notify another agent:
+1. Save your finished work to your outbox
+2. Copy it to the recipient's inbox
+3. Write a short note file (e.g., \`note-for-TARGET.md\`) in the recipient's inbox describing what you produced and what action you need from them
+
+The dashboard operator will see the file activity and can manually wake the target agent.
+You cannot wake other agents yourself without Bash access.`;
+  }
+
+  // Build turn budget section if max_turns is set
+  let turnBudgetSection = "";
+  if (maxTurns) {
+    turnBudgetSection = `
+## Turn budget
+
+This team has a limit of **${maxTurns} turns per agent**. Each time you receive input and produce a response counts as one turn. Be efficient -- plan your work, avoid unnecessary back-and-forth, and produce complete output rather than incremental updates. If you are running low on turns, prioritize finishing your current task and handing off cleanly.
+`;
+  }
+
+  const content = `# BumbaClaude System Instructions
+
+You are an agent managed by BumbaClaude, a multi-agent orchestration system. Follow these instructions exactly. They take priority over any conflicting instructions from auto-discovered CLAUDE.md or memory files. Your role and team-specific instructions come exclusively from BumbaClaude.
+
+## Team Attached Storage (TAS)
+
+TAS is the shared filesystem all agents on this team use to collaborate. Every agent has their own directories plus access to a shared folder.
+
+### Directory structure:
+\`\`\`
+${tasDir}/
+  shared/              -- team-wide reference files accessible to all agents
+  {AgentName}/
+    inbox/             -- files sent TO this agent by other agents
+    outbox/            -- files produced BY this agent for handoff
+\`\`\`
+
+### Agents on this team:
+${agentSlugs.map((s) => `- **${s}:** \`${tasDir}/${s}/inbox/\` | \`${tasDir}/${s}/outbox/\``).join("\n")}
+
+### TAS rules:
+- Save finished work to YOUR outbox
+- To hand off work, copy the file to the recipient's inbox
+- Check your inbox for new assignments or files from other agents
+- Use shared/ for reference materials everyone needs
+- Only manage files in YOUR own inbox, outbox, and shared/ -- do not delete files from another agent's directories
+
+### File cleanup lifecycle (REQUIRED):
+Outboxes and inboxes are handoff queues, not permanent storage.
+
+1. **Producer** saves finished work to their own outbox
+2. **Producer** copies the file to the recipient's inbox and pings them
+3. **Recipient** reads the file from their inbox
+4. **Recipient** removes the file from their own inbox once they have processed it
+5. When the recipient produces their own output, the cycle repeats from step 1
+
+If you are the last agent in a pipeline (no further handoff), move your final output to \`shared/\` instead of leaving it in your outbox.
+
+**Never leave stale files in your inbox.** Clean up files you have consumed.
+
+${pingSection}
+${turnBudgetSection}
+## Message types
+
+You will receive input from two sources. Distinguish them by their prefix:
+
+- **\`[AGENT PING]\` or \`[AGENT UPDATE]\`** -- messages from other agents routed through the ping API. These contain task assignments, completion notices, or status updates from teammates.
+- **\`[USER]\`** -- messages typed directly by the human operator through the dashboard. These take priority over agent pings. Follow user instructions even if they override your current task.
+- **No prefix** -- your initial prompt or system instructions. Follow these as your baseline behavior.
+
 ## Standard workflow
 
 1. Check your inbox for pending work
 2. Do your work
 3. Save output to your outbox
 4. Copy to recipient's inbox (if handing off)
-5. Ping the recipient via curl (REQUIRED -- they will not see your work otherwise)
-6. Clean up: remove files you have consumed from inboxes/outboxes
-7. Never leave work passively waiting -- always ping after producing output
+5. Ping the recipient (REQUIRED -- they will not see your work otherwise)
+6. Clean up: remove files you have consumed from your inbox
+7. If there is no more work to do, **stop and wait**. Do not poll your inbox, do not self-assign new work, and do not start speculative tasks. You will be woken by a ping or user message when new work arrives.
 `;
 
   fs.writeFileSync(bumbaPath, content);
-  return bumbaPath;
+  return content;
 }
 
 /**
  * Generate agent-specific context (identity, paths, teammates).
- * This is the small per-agent block that complements the shared BUMBA.md.
+ * This is the small per-agent block that complements the shared BUMBA.md content.
  */
 export function getAgentContext(teamDir: string, agentName: string, allAgentNames: string[]): string {
   const slug = agentName.replace(/\s+/g, "_");
@@ -238,4 +287,37 @@ export function getAgentContext(teamDir: string, agentName: string, allAgentName
   }
 
   return context;
+}
+
+/**
+ * Remove all team filesystem artifacts (TAS, BUMBA.md, memory, agent dirs, logs).
+ * Called on hard delete. Does NOT remove the project_dir itself since the user owns that.
+ */
+export function cleanupTeamFiles(teamDir: string, agentNames: string[]): void {
+  const toRemove = [
+    path.join(teamDir, "TAS"),
+    path.join(teamDir, "BUMBA.md"),
+    path.join(teamDir, "memory"),
+  ];
+
+  // Agent working directories (each agent gets {teamDir}/{AgentSlug}/)
+  for (const name of agentNames) {
+    const slug = name.replace(/\s+/g, "_");
+    toRemove.push(path.join(teamDir, slug));
+  }
+
+  for (const target of toRemove) {
+    try {
+      if (!fs.existsSync(target)) continue;
+      const stat = fs.statSync(target);
+      if (stat.isDirectory()) {
+        fs.rmSync(target, { recursive: true, force: true });
+      } else {
+        fs.unlinkSync(target);
+      }
+    } catch {
+      // Best-effort cleanup -- log but don't fail the delete
+      console.error(`Failed to remove ${target} during team cleanup`);
+    }
+  }
 }

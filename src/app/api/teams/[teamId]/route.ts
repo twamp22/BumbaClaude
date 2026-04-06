@@ -9,6 +9,7 @@ import {
   deleteTeam,
 } from "@/lib/db";
 import { killPane } from "@/lib/tmux";
+import { cleanupTeamFiles } from "@/lib/tas";
 
 export async function GET(
   _request: NextRequest,
@@ -72,6 +73,20 @@ export async function DELETE(
       }
     }
   }
+
+  // Audit the deletion before removing DB rows
+  createAuditEvent({
+    team_id: teamId,
+    event_type: "team_deleted",
+    event_data: JSON.stringify({
+      name: team.name,
+      project_dir: team.project_dir,
+      agent_count: agents.length,
+    }),
+  });
+
+  // Clean up filesystem artifacts (TAS, BUMBA.md, context files, agent dirs)
+  cleanupTeamFiles(team.project_dir, agents.map((a) => a.name));
 
   deleteTeam(teamId);
   return NextResponse.json({ ok: true });
