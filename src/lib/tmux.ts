@@ -34,6 +34,7 @@ const activeProcesses = new Map<
     systemPrompt?: string;
     model?: string;
     allowedTools?: string[];
+    agentId?: string;
     onExit?: (code: number | null) => void;
   }
 >();
@@ -57,6 +58,8 @@ interface SessionMeta {
   logFile: string;
   isolated?: boolean;
   allowedTools?: string[];
+  agentId?: string;
+  teamId?: string;
 }
 
 function saveSessionMeta(sessionName: string, meta: SessionMeta): void {
@@ -193,6 +196,8 @@ export async function spawnAgent(config: {
   isolated?: boolean;
   contextFile?: string;
   governance?: Record<string, string>;
+  agentId?: string;
+  teamId?: string;
   onExit?: (code: number | null) => void;
 }): Promise<{ sessionId: string; paneId: string }> {
   if (!IS_WINDOWS && isTmuxAvailable()) {
@@ -242,6 +247,7 @@ function runClaudeProcess(opts: {
   isolated?: boolean;
   contextFile?: string;
   allowedTools?: string[];
+  agentId?: string;
   logFile: string;
   isResume: boolean;
   onExit?: (code: number | null) => void;
@@ -314,7 +320,16 @@ function runClaudeProcess(opts: {
 
   child.on("exit", (code) => {
     logStream.write(`\n[RESPONSE COMPLETE]\n`);
-    // Don't call onExit here for resume -- only for initial spawn failures
+
+    // Update agent status to idle after response completes
+    if (opts.agentId && code === 0) {
+      try {
+        const { updateAgentStatus } = require("./db");
+        updateAgentStatus(opts.agentId, "idle");
+      } catch { /* db may not be available */ }
+    }
+
+    // Report errors on initial spawn
     if (!opts.isResume && opts.onExit && code !== 0) {
       opts.onExit(code);
     }
@@ -336,6 +351,8 @@ async function spawnAgentProcess(config: {
   isolated?: boolean;
   contextFile?: string;
   governance?: Record<string, string>;
+  agentId?: string;
+  teamId?: string;
   onExit?: (code: number | null) => void;
 }): Promise<{ sessionId: string; paneId: string }> {
   const { sessionName, workingDir } = config;
@@ -368,6 +385,7 @@ async function spawnAgentProcess(config: {
     isolated: config.isolated,
     contextFile: config.contextFile,
     allowedTools,
+    agentId: config.agentId,
     logFile,
     isResume: false,
     onExit: config.onExit,
@@ -381,6 +399,7 @@ async function spawnAgentProcess(config: {
     systemPrompt: config.prompt,
     model: config.model,
     allowedTools,
+    agentId: config.agentId,
     onExit: config.onExit,
   });
 
@@ -393,6 +412,8 @@ async function spawnAgentProcess(config: {
     logFile,
     isolated: config.isolated,
     allowedTools,
+    agentId: config.agentId,
+    teamId: config.teamId,
   });
 
   return {
@@ -460,6 +481,7 @@ export async function sendInput(paneId: string, text: string): Promise<void> {
       systemPrompt: meta.systemPrompt,
       model: meta.model,
       allowedTools: meta.allowedTools,
+      agentId: meta.agentId,
     };
     activeProcesses.set(paneId, entry);
   }
@@ -469,6 +491,14 @@ export async function sendInput(paneId: string, text: string): Promise<void> {
   logStream.write(`\n[USER] ${text}\n\n`);
   logStream.end();
 
+  // Update agent status to working while processing
+  if (entry.agentId) {
+    try {
+      const { updateAgentStatus } = require("./db");
+      updateAgentStatus(entry.agentId, "working");
+    } catch { /* db may not be available */ }
+  }
+
   const child = runClaudeProcess({
     sessionName: paneId,
     claudeSessionId: entry.sessionId,
@@ -476,6 +506,7 @@ export async function sendInput(paneId: string, text: string): Promise<void> {
     prompt: text,
     model: entry.model,
     allowedTools: entry.allowedTools,
+    agentId: entry.agentId,
     logFile: entry.logFile,
     isResume: true,
   });

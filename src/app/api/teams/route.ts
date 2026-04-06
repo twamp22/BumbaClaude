@@ -84,6 +84,8 @@ export async function POST(request: NextRequest) {
           isolated: useIsolation,
           contextFile,
           governance: governanceMap,
+          agentId,
+          teamId,
           onExit: (code) => {
             updateAgentStatus(agentId, code === 0 ? "completed" : "errored");
             createAuditEvent({
