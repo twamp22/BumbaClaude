@@ -44,7 +44,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Tech stack
 
-- Next.js 14+ (App Router, TypeScript)
+- Next.js 16+ (App Router, TypeScript)
 - Tailwind CSS (dark mode primary)
 - SQLite via better-sqlite3 (local, zero config)
 - WebSocket for live agent status streaming

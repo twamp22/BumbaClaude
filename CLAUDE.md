@@ -6,7 +6,7 @@ BumbaClaude -- a standalone web dashboard for managing multi-agent Claude Code w
 
 ## Stack
 
-- Next.js 14+ (App Router, TypeScript, server components by default)
+- Next.js 16+ (App Router, TypeScript, server components by default)
 - Tailwind CSS (dark mode primary, class strategy)
 - SQLite via better-sqlite3 (no ORM, raw SQL in lib/db.ts)
 - WebSocket via ws (server) + native WebSocket (client)
