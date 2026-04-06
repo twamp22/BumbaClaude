@@ -41,7 +41,7 @@ A step-by-step form to launch a new agent team:
 **Step 1 -- Project setup:**
 - Select working directory (file picker or manual path input)
 - Team name (auto-generated from directory name, editable)
-- Select execution mode: in-process (default) or tmux split-pane
+- Execution mode: tmux (Agent SDK mode planned for v0.2)
 
 **Step 2 -- Agent roles:**
 - Add 1-6 agent roles with: name, description, model tier (haiku/sonnet/opus), tool permissions
@@ -114,7 +114,7 @@ CREATE TABLE teams (
   name TEXT NOT NULL,
   project_dir TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'running', -- running, paused, completed, errored
-  execution_mode TEXT NOT NULL DEFAULT 'in-process', -- in-process, tmux
+  execution_mode TEXT NOT NULL DEFAULT 'tmux',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   ended_at DATETIME
 );

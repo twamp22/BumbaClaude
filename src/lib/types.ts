@@ -1,7 +1,7 @@
 // Shared TypeScript types for BumbaClaude
 
 export type TeamStatus = "running" | "paused" | "completed" | "errored";
-export type ExecutionMode = "in-process" | "tmux";
+export type ExecutionMode = "tmux";
 export type AgentStatus = "idle" | "working" | "waiting" | "completed" | "errored";
 export type ModelTier = "haiku" | "sonnet" | "opus";
 export type TaskStatus = "pending" | "claimed" | "in_progress" | "review" | "completed" | "blocked";

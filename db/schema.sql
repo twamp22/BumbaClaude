@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS teams (
   name TEXT NOT NULL,
   project_dir TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'running',    -- running, paused, completed, errored
-  execution_mode TEXT NOT NULL DEFAULT 'in-process', -- in-process, tmux
+  execution_mode TEXT NOT NULL DEFAULT 'tmux',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   ended_at DATETIME
 );

@@ -75,25 +75,6 @@ export default function ProjectStep({ state, updateState, onNext }: ProjectStepP
         )}
       </div>
 
-      <div>
-        <label className="block text-sm font-mono text-zinc-400 mb-1">Execution mode</label>
-        <div className="flex gap-3">
-          {(["tmux", "in-process"] as const).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => updateState({ execution_mode: mode })}
-              className={`px-4 py-2 text-sm font-mono rounded border transition-colors ${
-                state.execution_mode === mode
-                  ? "bg-zinc-700 border-zinc-500 text-zinc-100"
-                  : "bg-zinc-800 border-zinc-700 text-zinc-500 hover:border-zinc-600"
-              }`}
-            >
-              {mode}
-            </button>
-          ))}
-        </div>
-      </div>
-
       <div className="flex justify-end">
         <button
           onClick={onNext}

@@ -25,7 +25,7 @@ export interface WizardGovernance {
 export interface WizardState {
   name: string;
   project_dir: string;
-  execution_mode: "in-process" | "tmux";
+  execution_mode: "tmux";
   agents: WizardAgent[];
   governance: WizardGovernance;
 }
