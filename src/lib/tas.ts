@@ -137,32 +137,43 @@ You have access to a shared filesystem for collaborating with other agents.
       instructions += `- **${other}:** inbox at \`${tasDir}/${other}/inbox/\`, outbox at \`${tasDir}/${other}/outbox/\`\n`;
     }
 
+    const pingBase = `curl -s -X POST http://localhost:3000/api/teams/${teamId || "TEAM_ID"}/ping -H "Content-Type: application/json"`;
+
     instructions += `
 ### Pinging other agents (REQUIRED)
 
-You MUST ping other agents when:
-1. You place a file in their inbox
-2. You complete a task that was assigned to you by another agent
-3. You need another agent to take action
+Agents cannot see your messages. They only wake up when pinged. Never say "ready for X to pull when ready." Always ping.
 
-Never say "ready for X to pull when ready" or "X can check when available."
-Instead, always ping them immediately. Agents cannot see your messages -- they only wake up when pinged.
+There are three ping types. Use the correct one:
 
-**To ping, use the Bash tool:**
-
+**1. Assignment -- assign new work to another agent:**
 \`\`\`bash
-curl -s -X POST http://localhost:3000/api/teams/${teamId || "TEAM_ID"}/ping -H "Content-Type: application/json" -d '{"from_agent_name": "${agentName}", "to_agent_name": "TARGET_AGENT_NAME", "task_title": "Brief task description", "task_description": "What they need to do", "tas_file": "path/to/the/file"}'
+${pingBase} -d '{"from_agent_name": "${agentName}", "to_agent_name": "TARGET_NAME", "ping_type": "assignment", "task_title": "What to do", "task_description": "Detailed instructions", "tas_file": "path/to/file"}'
 \`\`\`
+Creates a tracked task, wakes the agent, they start immediately.
 
-Replace TARGET_AGENT_NAME with the exact agent name. This will:
-1. Create a tracked task visible in the dashboard
-2. Wake the target agent immediately
-3. Deliver the task so they begin working right away
+**2. Completion -- you finished an assigned task, notify the assigner:**
+\`\`\`bash
+${pingBase} -d '{"from_agent_name": "${agentName}", "to_agent_name": "TARGET_NAME", "ping_type": "completion", "task_title": "Task done: brief summary", "task_description": "What was completed and where the output is", "tas_file": "path/to/output"}'
+\`\`\`
+Marks your current task as completed, wakes the other agent. Does NOT create a new task.
 
-### Workflow rules:
-- **After completing assigned work:** Ping the agent who assigned the task, letting them know it is done and where the output is
-- **After producing new work:** Place it in your outbox, copy to the relevant agent's inbox, then ping them
-- **Never leave work passively waiting.** Always actively hand it off with a ping.`;
+**3. Status update -- send info without creating a task:**
+\`\`\`bash
+${pingBase} -d '{"from_agent_name": "${agentName}", "to_agent_name": "TARGET_NAME", "ping_type": "status_update", "task_title": "Update summary", "task_description": "Details"}'
+\`\`\`
+Just wakes the agent with a message. No task created. Use for acknowledgments, questions, or feedback.
+
+### Which ping type to use:
+- **Giving someone work to do?** Use \`assignment\`
+- **Finished work someone assigned you?** Use \`completion\`
+- **Acknowledging feedback, asking a question, or sending info?** Use \`status_update\`
+
+### Workflow:
+1. Produce your work, save to your TAS outbox
+2. If handing off: copy to the recipient's inbox
+3. Ping with the correct type
+4. Never leave work passively waiting`;
   }
 
   return instructions;
