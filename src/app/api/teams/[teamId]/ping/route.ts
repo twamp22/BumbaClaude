@@ -42,8 +42,9 @@ export async function POST(
     (a) => a.name.toLowerCase() === to_agent_name?.toLowerCase()
   );
 
-  // For start pings, to_agent is optional (agent announcing to itself/dashboard)
-  if (!toAgent && ping_type !== "start") {
+  // For start and completion pings, to_agent is optional
+  // (start = self-announcement; completion without target = operator-assigned task)
+  if (!toAgent && ping_type !== "start" && ping_type !== "completion") {
     return NextResponse.json(
       { error: `Agent "${to_agent_name}" not found on this team` },
       { status: 404 }

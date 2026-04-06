@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { useTeamStatus } from "@/hooks/useTeamStatus";
 import AgentCard from "@/components/monitor/AgentCard";
 import TaskList from "@/components/monitor/TaskList";
@@ -13,8 +13,15 @@ import StatusBadge from "@/components/shared/StatusBadge";
 
 export default function TeamMonitorPage() {
   const { teamId } = useParams<{ teamId: string }>();
+  const router = useRouter();
   const { team, agents, tasks, governance, events, loading, error, refresh } = useTeamStatus(teamId);
   const [rightTab, setRightTab] = useState<"tasks" | "activity" | "tas">("tasks");
+
+  useEffect(() => {
+    if (!loading && (error || !team)) {
+      router.replace("/");
+    }
+  }, [loading, error, team, router]);
 
   if (loading) {
     return (
@@ -25,11 +32,7 @@ export default function TeamMonitorPage() {
   }
 
   if (error || !team) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-red-500 font-mono">{error || "Team not found"}</div>
-      </div>
-    );
+    return null;
   }
 
   const autoExpand = agents.length <= 2;

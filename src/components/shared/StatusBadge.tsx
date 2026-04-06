@@ -7,6 +7,7 @@ const STATUS_COLORS: Record<string, string> = {
   completed: "bg-zinc-500",
   errored: "bg-red-500",
   // Agent statuses
+  initializing: "bg-blue-500",
   idle: "bg-amber-500",
   working: "bg-green-500",
   waiting: "bg-amber-500",

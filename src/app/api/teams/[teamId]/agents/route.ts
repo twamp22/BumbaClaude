@@ -65,7 +65,7 @@ export async function POST(
     role: body.role,
     model_tier: body.model_tier || "sonnet",
     system_prompt: body.system_prompt || null,
-    status: tmuxSession ? "working" : "errored",
+    status: tmuxSession ? "initializing" : "errored",
     tmux_session: tmuxSession,
   });
 

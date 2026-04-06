@@ -1,25 +1,69 @@
-import { getAllTeams, getAgentsByTeam, getTasksByTeam } from "@/lib/db";
+"use client";
+
+import { useState, useEffect } from "react";
 import QuickStats from "@/components/dashboard/QuickStats";
 import TeamCard from "@/components/dashboard/TeamCard";
 import ActivityFeed from "@/components/dashboard/ActivityFeed";
-import type { Agent, Task } from "@/lib/types";
+import type { Team, Agent, Task } from "@/lib/types";
 
-export const dynamic = "force-dynamic";
+interface DashboardData {
+  teams: Team[];
+  allAgents: Agent[];
+  allTasks: Task[];
+  teamMeta: Record<string, { agentCount: number; taskCount: number }>;
+}
 
 export default function Home() {
-  const teams = getAllTeams();
+  const [data, setData] = useState<DashboardData | null>(null);
 
-  const allAgents: Agent[] = [];
-  const allTasks: Task[] = [];
-  const teamMeta: Record<string, { agentCount: number; taskCount: number }> = {};
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch("/api/teams");
+        const teams: Team[] = await res.json();
 
-  for (const team of teams) {
-    const agents = getAgentsByTeam(team.id);
-    const tasks = getTasksByTeam(team.id);
-    allAgents.push(...agents);
-    allTasks.push(...tasks);
-    teamMeta[team.id] = { agentCount: agents.length, taskCount: tasks.length };
+        const allAgents: Agent[] = [];
+        const allTasks: Task[] = [];
+        const teamMeta: Record<string, { agentCount: number; taskCount: number }> = {};
+
+        await Promise.all(
+          teams.map(async (team) => {
+            try {
+              const [agentRes, taskRes] = await Promise.all([
+                fetch(`/api/teams/${team.id}/agents`),
+                fetch(`/api/teams/${team.id}/tasks`),
+              ]);
+              const agents: Agent[] = await agentRes.json();
+              const tasks: Task[] = await taskRes.json();
+              allAgents.push(...agents);
+              allTasks.push(...tasks);
+              teamMeta[team.id] = { agentCount: agents.length, taskCount: tasks.length };
+            } catch {
+              teamMeta[team.id] = { agentCount: 0, taskCount: 0 };
+            }
+          })
+        );
+
+        setData({ teams, allAgents, allTasks, teamMeta });
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+      }
+    };
+
+    fetchData();
+    const interval = setInterval(fetchData, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (!data) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-zinc-500 font-mono">Loading...</div>
+      </div>
+    );
   }
+
+  const { teams, allAgents, allTasks, teamMeta } = data;
 
   return (
     <div className="p-6 space-y-6">

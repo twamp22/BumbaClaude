@@ -307,9 +307,11 @@ function runClaudeProcess(opts: {
     args.push("--append-system-prompt",
       "REMINDER: You are a BumbaClaude agent. Key rules: " +
       "(1) Ping other agents using Bash + curl -- writing files does not wake them. " +
-      "(2) Clean your inbox after consuming files. " +
-      "(3) If there is no work to do, stop and wait -- do not self-assign tasks. " +
-      "(4) Messages prefixed [USER] are from the human operator and take priority."
+      "(2) ALWAYS send a start ping before working and a completion ping when done. " +
+      "Completion pings do NOT require to_agent_name -- omit it if the task came from the operator. " +
+      "(3) Clean your inbox after consuming files. " +
+      "(4) If there is no work to do, stop and wait -- do not self-assign tasks. " +
+      "(5) Messages prefixed [USER] are from the human operator and take priority."
     );
   } else {
     args.push("--session-id", opts.claudeSessionId);
@@ -352,11 +354,66 @@ function runClaudeProcess(opts: {
   child.on("exit", (code) => {
     logStream.write(`\n[RESPONSE COMPLETE]\n`);
 
-    // Update agent status to idle after response completes
+    // Update agent status and auto-complete orphaned tasks after response completes
     if (opts.agentId && code === 0) {
       try {
         const db = require("./db");
         db.updateAgentStatus(opts.agentId, "idle");
+
+        // Auto-complete in_progress tasks if agent didn't send a completion ping.
+        // This prevents tasks from being stuck when the model fails to curl.
+        if (opts.teamId) {
+          const tasks = db.getTasksByTeam(opts.teamId);
+          const orphanedTasks = tasks.filter(
+            (t: { assigned_agent_id: string; status: string; parent_task_id: string | null; id: string }) => {
+              if (t.assigned_agent_id !== opts.agentId) return false;
+              if (t.status === "in_progress") return true;
+              // Also auto-complete "review" tasks if all their child tasks are done
+              if (t.status === "review") {
+                const childTasks = tasks.filter(
+                  (ct: { parent_task_id: string | null }) => ct.parent_task_id === t.id
+                );
+                const allChildrenDone = childTasks.length > 0 && childTasks.every(
+                  (ct: { status: string }) => ct.status === "completed"
+                );
+                return allChildrenDone;
+              }
+              return false;
+            }
+          );
+          for (const task of orphanedTasks) {
+            db.updateTaskStatus(task.id, "completed");
+            db.createAuditEvent({
+              team_id: opts.teamId,
+              agent_id: opts.agentId,
+              event_type: "task_completed",
+              event_data: JSON.stringify({
+                task_id: task.id,
+                title: task.title,
+                agent_name: opts.role || "Agent",
+                auto_completed: true,
+                reason: "Agent process exited without sending completion ping",
+              }),
+            });
+
+            // Wake the parent task's agent so they can continue
+            if (task.parent_task_id) {
+              const parentTask = tasks.find(
+                (t: { id: string }) => t.id === task.parent_task_id
+              );
+              if (parentTask?.assigned_agent_id) {
+                const parentAgent = db.getAgent(parentTask.assigned_agent_id);
+                if (parentAgent?.tmux_session) {
+                  const msg = `[AGENT PING] COMPLETED by ${opts.role || "Agent"}: ${task.title}\nTask ID: ${task.id}\nNote: Auto-completed on process exit. Check inbox for output files.`;
+                  // Use async sendInput but don't await in exit handler
+                  sendInput(parentAgent.tmux_session, msg).catch((err: Error) => {
+                    console.error(`Failed to wake parent agent: ${err.message}`);
+                  });
+                }
+              }
+            }
+          }
+        }
       } catch { /* db may not be available */ }
     }
 

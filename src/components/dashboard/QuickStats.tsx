@@ -17,7 +17,7 @@ function StatCard({ label, value }: { label: string; value: number }) {
 
 export default function QuickStats({ teams, agents, tasks }: QuickStatsProps) {
   const teamsRunning = teams.filter((t) => t.status === "running").length;
-  const agentsActive = agents.filter((a) => a.status === "working" || a.status === "idle").length;
+  const agentsActive = agents.filter((a) => a.status === "initializing" || a.status === "working" || a.status === "idle").length;
   const tasksCompleted = tasks.filter((t) => t.status === "completed").length;
   const tasksPending = tasks.filter(
     (t) => t.status === "pending" || t.status === "in_progress" || t.status === "claimed"

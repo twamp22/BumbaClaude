@@ -17,7 +17,7 @@ const MODEL_COLORS: Record<string, string> = {
 };
 
 export default function AgentNavItem({ agent, teamId }: AgentNavItemProps) {
-  const isActive = agent.status === "working" || agent.status === "idle" || agent.status === "waiting";
+  const isActive = agent.status === "initializing" || agent.status === "working" || agent.status === "idle" || agent.status === "waiting";
 
   const interrupt = async () => {
     await fetch(`/api/teams/${teamId}/agents/${agent.id}`, {

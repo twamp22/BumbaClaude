@@ -56,6 +56,7 @@ export async function POST(
         : `Task: ${body.title}`;
       await sendInput(assignedAgent.tmux_session, taskPrompt);
       updateTaskStatus(taskId, "in_progress");
+      task.status = "in_progress";
       createAuditEvent({
         team_id: teamId,
         agent_id: assignedAgent.id,

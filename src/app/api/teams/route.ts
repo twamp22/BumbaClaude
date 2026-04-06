@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
         role: agentDef.role,
         model_tier: agentDef.model_tier || "sonnet",
         system_prompt: agentDef.system_prompt || null,
-        status: tmuxSession ? "working" : "errored",
+        status: tmuxSession ? "initializing" : "errored",
         tmux_session: tmuxSession,
       });
 

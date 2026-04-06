@@ -176,7 +176,9 @@ ${pingBase} -d '{"from_agent_name": "YOUR_NAME", "to_agent_name": "TARGET", "pin
 \`\`\`
 Marks your current task as completed, updates your status to "idle", wakes the other agent. Does NOT create a new task.
 
-**IMPORTANT:** Always include the \`task_id\` field in completion pings. When you receive an assignment, the message includes a Task ID -- save it and use it when you send your completion ping. This ensures the correct task is marked as completed in the dashboard.
+**\`to_agent_name\` is optional for completion pings.** If your task was assigned by the operator (not another agent), omit \`to_agent_name\` -- the ping still marks your task as completed and updates your status. If your task was assigned by another agent, include their name as \`to_agent_name\` so they get woken up.
+
+**IMPORTANT:** Always include the \`task_id\` field in completion pings. When you receive an assignment, the message includes a Task ID -- save it and use it when you send your completion ping. This ensures the correct task is marked as completed in the dashboard. If you do not have a task_id (e.g. the task was sent by the operator without one), you may omit it and the system will match your current in-progress task automatically.
 
 **4. status_update** -- send info without creating a task:
 \`\`\`bash

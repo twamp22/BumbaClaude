@@ -45,6 +45,12 @@ export default function TeamSettingsPage() {
       .catch(() => setContextLoading(false));
   }, [teamId]);
 
+  useEffect(() => {
+    if (!loading && !team) {
+      router.replace("/");
+    }
+  }, [loading, team, router]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -54,11 +60,7 @@ export default function TeamSettingsPage() {
   }
 
   if (!team) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-red-500 font-mono">Team not found</div>
-      </div>
-    );
+    return null;
   }
 
   const getRule = (type: string) => {
