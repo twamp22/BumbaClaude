@@ -35,6 +35,7 @@ const activeProcesses = new Map<
     model?: string;
     allowedTools?: string[];
     agentId?: string;
+    teamId?: string;
     onExit?: (code: number | null) => void;
   }
 >();
@@ -248,6 +249,7 @@ function runClaudeProcess(opts: {
   contextFile?: string;
   allowedTools?: string[];
   agentId?: string;
+  teamId?: string;
   logFile: string;
   isResume: boolean;
   onExit?: (code: number | null) => void;
@@ -273,6 +275,16 @@ function runClaudeProcess(opts: {
 
   if (opts.isResume) {
     args.push("--resume", opts.claudeSessionId);
+    // Reinject ping reminder on every resume so agents don't forget
+    if (opts.teamId) {
+      args.push("--append-system-prompt",
+        `REMINDER: To ping another agent you MUST use the Bash tool to run a curl command. Example: ` +
+        `curl -s -X POST http://localhost:3000/api/teams/${opts.teamId}/ping -H "Content-Type: application/json" ` +
+        `-d '{"from_agent_name":"YOUR_NAME","to_agent_name":"TARGET","ping_type":"completion","task_title":"Done","task_description":"Details"}'. ` +
+        `Writing a file to their inbox does NOT wake them. Only this curl HTTP call does. ` +
+        `You MUST run this curl command via Bash after completing any work.`
+      );
+    }
   } else {
     args.push("--session-id", opts.claudeSessionId);
     if (opts.isolated && opts.role) {
@@ -400,6 +412,7 @@ async function spawnAgentProcess(config: {
     model: config.model,
     allowedTools,
     agentId: config.agentId,
+    teamId: config.teamId,
     onExit: config.onExit,
   });
 
@@ -482,6 +495,7 @@ export async function sendInput(paneId: string, text: string): Promise<void> {
       model: meta.model,
       allowedTools: meta.allowedTools,
       agentId: meta.agentId,
+      teamId: meta.teamId,
     };
     activeProcesses.set(paneId, entry);
   }
@@ -507,6 +521,7 @@ export async function sendInput(paneId: string, text: string): Promise<void> {
     model: entry.model,
     allowedTools: entry.allowedTools,
     agentId: entry.agentId,
+    teamId: entry.teamId,
     logFile: entry.logFile,
     isResume: true,
   });
