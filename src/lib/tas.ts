@@ -119,8 +119,8 @@ export interface BumbaPromptOptions {
  */
 export function generateBumbaSystemPrompt(opts: BumbaPromptOptions): string {
   const { teamDir, teamId, agentNames, governance } = opts;
-  // Use relative paths so prompts are portable across machines
-  const tasDir = "./TAS";
+  // Use relative path from agent working dirs ({teamDir}/{AgentSlug}/) to TAS
+  const tasDir = "../TAS";
   const bumbaPath = path.join(teamDir, "BUMBA.md");
 
   const agentSlugs = agentNames.map((n) => n.replace(/\s+/g, "_"));
@@ -267,8 +267,8 @@ You will receive input from two sources. Distinguish them by their prefix:
  */
 export function getAgentContext(teamDir: string, agentName: string, allAgentNames: string[]): string {
   const slug = agentName.replace(/\s+/g, "_");
-  // Use relative paths so context files are portable across machines
-  const tasDir = "./TAS";
+  // Relative path from agent working dir ({teamDir}/{AgentSlug}/) to TAS
+  const tasDir = "../TAS";
 
   const teammates = allAgentNames
     .filter((n) => n !== agentName)
