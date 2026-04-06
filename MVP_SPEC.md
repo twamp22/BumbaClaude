@@ -12,11 +12,11 @@ A standalone web dashboard that manages multi-agent Claude Code workflows withou
 
 ## Tech stack
 
-- **Framework:** Next.js 14+ (App Router, TypeScript)
+- **Framework:** Next.js 16+ (App Router, TypeScript)
 - **Styling:** Tailwind CSS
 - **Database:** SQLite via better-sqlite3 (local, zero-config)
 - **Real-time:** WebSocket (ws library) for live agent status
-- **Process management:** node-pty or child_process for tmux interaction
+- **Process management:** child_process for tmux interaction
 - **File watching:** chokidar for ~/.claude/ directory monitoring
 - **Package manager:** pnpm
 
@@ -249,7 +249,7 @@ This is a v0.2 feature. MVP should work entirely with tmux + filesystem.
 /
   package.json
   next.config.ts
-  tailwind.config.ts
+  postcss.config.mjs
   tsconfig.json
   CLAUDE.md                    -- Instructions for Claude Code to work on this project
   /src
