@@ -142,7 +142,9 @@ You have access to a shared filesystem for collaborating with other agents.
     instructions += `
 ### Pinging other agents (REQUIRED)
 
-Agents cannot see your messages. They only wake up when pinged. Never say "ready for X to pull when ready." Always ping.
+Agents cannot see your messages. They only wake up when pinged via the HTTP API below.
+Pinging means making an HTTP request using curl. It does NOT mean writing a file to their inbox.
+A ping wakes the other agent's process. Without it, they stay asleep and never see your work.
 
 There are three ping types. Use the correct one:
 
@@ -172,8 +174,15 @@ Just wakes the agent with a message. No task created. Use for acknowledgments, q
 ### Workflow:
 1. Produce your work, save to your TAS outbox
 2. If handing off: copy to the recipient's inbox
-3. Ping with the correct type
-4. Never leave work passively waiting`;
+3. Ping using the curl HTTP command above (NOT by writing a file -- use the actual curl command via Bash)
+4. Never leave work passively waiting
+
+### CRITICAL: How to ping
+Pinging is an HTTP API call using the Bash tool to run curl. Example:
+\`\`\`
+curl -s -X POST http://localhost:3000/api/teams/${teamId || "TEAM_ID"}/ping -H "Content-Type: application/json" -d '{"from_agent_name":"...","to_agent_name":"...","ping_type":"completion","task_title":"...","task_description":"..."}'
+\`\`\`
+Do NOT write a file called "ping" to anyone's inbox. That does nothing. You MUST use Bash to run the curl command.`;
   }
 
   return instructions;
