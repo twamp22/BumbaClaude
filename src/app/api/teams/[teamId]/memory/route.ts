@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTeam } from "@/lib/db";
 import fs from "fs";
 import path from "path";
-import { MEMORY_DIR } from "@/lib/tmux";
+import { getTeamMemoryDir } from "@/lib/tmux";
 
 export async function GET(
   _request: NextRequest,
@@ -14,8 +14,8 @@ export async function GET(
     return NextResponse.json({ error: "Team not found" }, { status: 404 });
   }
 
-  const teamDir = path.join(MEMORY_DIR, teamId);
-  const instructionsPath = path.join(teamDir, "instructions.md");
+  const memoryDir = getTeamMemoryDir(team.project_dir);
+  const instructionsPath = path.join(memoryDir, "instructions.md");
 
   const instructions = fs.existsSync(instructionsPath)
     ? fs.readFileSync(instructionsPath, "utf-8")
@@ -37,12 +37,12 @@ export async function PUT(
   const body = await request.json();
   const { instructions } = body;
 
-  const teamDir = path.join(MEMORY_DIR, teamId);
-  if (!fs.existsSync(teamDir)) {
-    fs.mkdirSync(teamDir, { recursive: true });
+  const memoryDir = getTeamMemoryDir(team.project_dir);
+  if (!fs.existsSync(memoryDir)) {
+    fs.mkdirSync(memoryDir, { recursive: true });
   }
 
-  fs.writeFileSync(path.join(teamDir, "instructions.md"), instructions || "");
+  fs.writeFileSync(path.join(memoryDir, "instructions.md"), instructions || "");
 
   return NextResponse.json({ ok: true });
 }

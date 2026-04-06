@@ -135,6 +135,12 @@ export function updateAgentStatus(id: string, status: AgentStatus): void {
   }
 }
 
+export function getAgentBySession(tmuxSession: string): Agent | undefined {
+  return getDb()
+    .prepare("SELECT * FROM agents WHERE tmux_session = ?")
+    .get(tmuxSession) as Agent | undefined;
+}
+
 export function updateAgentTmuxSession(id: string, tmuxSession: string): void {
   getDb()
     .prepare("UPDATE agents SET tmux_session = ? WHERE id = ?")

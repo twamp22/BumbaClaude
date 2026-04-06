@@ -21,6 +21,9 @@ data/
 *.db-journal
 *.db-wal
 
+# team working directories (dynamically named)
+team_data/
+
 # os
 .DS_Store
 Thumbs.db

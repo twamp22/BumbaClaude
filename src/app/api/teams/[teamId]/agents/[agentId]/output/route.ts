@@ -17,7 +17,11 @@ export async function GET(
   }
 
   const lines = parseInt(request.nextUrl.searchParams.get("lines") || "50");
-  const output = await captureOutput(agent.tmux_session, lines);
-
-  return NextResponse.json({ output });
+  try {
+    const output = await captureOutput(agent.tmux_session, lines);
+    return NextResponse.json({ output });
+  } catch (error) {
+    console.error(`Failed to capture output for agent ${agentId}:`, error);
+    return NextResponse.json({ output: "" });
+  }
 }

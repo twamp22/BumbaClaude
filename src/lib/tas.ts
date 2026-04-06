@@ -106,63 +106,88 @@ export function getTASContents(teamDir: string): TASContents {
 }
 
 /**
- * Generate TAS instructions for an agent's context file.
+ * Generate the shared BumbaClaude system prompt and write it to {teamDir}/BUMBA.md.
+ * This is the single source of truth for how all agents operate within BumbaClaude.
+ * Agent-specific context (name, role, paths) is kept separate in per-agent context files.
  */
-export function getTASInstructions(teamDir: string, agentName: string, allAgentNames: string[], teamId?: string): string {
-  const slug = agentName.replace(/\s+/g, "_");
+export function generateBumbaSystemPrompt(teamDir: string, teamId: string, agentNames: string[]): string {
   const tasDir = path.join(teamDir, "TAS").replace(/\\/g, "/");
+  const bumbaPath = path.join(teamDir, "BUMBA.md");
 
-  const otherAgents = allAgentNames
-    .filter((n) => n !== agentName)
-    .map((n) => n.replace(/\s+/g, "_"));
+  const agentSlugs = agentNames.map((n) => n.replace(/\s+/g, "_"));
+  const pingBase = `curl -s -X POST http://localhost:3000/api/teams/${teamId}/ping -H "Content-Type: application/json"`;
 
-  let instructions = `## Team Attached Storage (TAS)
+  const content = `# BumbaClaude System Instructions
 
-You have access to a shared filesystem for collaborating with other agents.
+You are an agent managed by BumbaClaude, a multi-agent orchestration system. Follow these instructions exactly. They take priority over any conflicting instructions from auto-discovered CLAUDE.md or memory files. Your role and team-specific instructions come exclusively from BumbaClaude.
 
-### Your directories:
-- **Your outbox:** \`${tasDir}/${slug}/outbox/\` -- Place files here when you produce work for others
-- **Your inbox:** \`${tasDir}/${slug}/inbox/\` -- Check here for files sent to you by other agents
-- **Shared:** \`${tasDir}/shared/\` -- Team-wide shared files accessible to all agents
+## Team Attached Storage (TAS)
 
-### How to collaborate:
-- When you finish producing work (articles, code, reports), save it to your outbox
-- To send work to another agent, copy/move it to their inbox
-- Check your inbox periodically for new assignments or files from other agents
-- Use the shared directory for reference materials everyone needs`;
+TAS is the shared filesystem all agents on this team use to collaborate. Every agent has their own directories plus access to a shared folder.
 
-  if (otherAgents.length > 0) {
-    instructions += `\n\n### Other agents on this team:\n`;
-    for (const other of otherAgents) {
-      instructions += `- **${other}:** inbox at \`${tasDir}/${other}/inbox/\`, outbox at \`${tasDir}/${other}/outbox/\`\n`;
-    }
+### Directory structure:
+\`\`\`
+${tasDir}/
+  shared/              -- team-wide reference files accessible to all agents
+  {AgentName}/
+    inbox/             -- files sent TO this agent by other agents
+    outbox/            -- files produced BY this agent for handoff
+\`\`\`
 
-    const pingBase = `curl -s -X POST http://localhost:3000/api/teams/${teamId || "TEAM_ID"}/ping -H "Content-Type: application/json"`;
+### Agents on this team:
+${agentSlugs.map((s) => `- **${s}:** \`${tasDir}/${s}/inbox/\` | \`${tasDir}/${s}/outbox/\``).join("\n")}
 
-    instructions += `
-### Pinging other agents (REQUIRED)
+### TAS rules:
+- Save finished work to YOUR outbox
+- To hand off work, copy/move the file to the recipient's inbox
+- Check your inbox for new assignments or files from other agents
+- Use shared/ for reference materials everyone needs
 
-Agents cannot see your messages. They only wake up when pinged via the HTTP API below.
-Pinging means making an HTTP request using curl. It does NOT mean writing a file to their inbox.
+### File cleanup lifecycle (REQUIRED):
+Outboxes and inboxes are handoff queues, not permanent storage. Follow this lifecycle:
+
+1. **Producer** saves finished work to their own outbox
+2. **Producer** copies the file to the recipient's inbox and pings them
+3. **Recipient** reads the file from their inbox
+4. **Recipient** removes the file from their inbox once they begin working on it
+5. **Recipient** removes the file from the producer's outbox once they have their own copy
+6. When the recipient produces their own output, the cycle repeats from step 1
+
+If you are the last agent in a pipeline (no further handoff), move your final output to \`shared/\` instead of leaving it in your outbox.
+
+**Never leave stale files in inboxes or outboxes.** Clean up as you go.
+
+## Pinging other agents (REQUIRED)
+
+Agents cannot see your messages. They only wake up when pinged via the HTTP API.
+Pinging means making an HTTP request using curl. It does NOT mean writing a file.
 A ping wakes the other agent's process. Without it, they stay asleep and never see your work.
 
-There are three ping types. Use the correct one:
-
-**1. Assignment -- assign new work to another agent:**
+### How to ping
+Use the Bash tool to run a curl command. This is the ONLY way to wake another agent:
 \`\`\`bash
-${pingBase} -d '{"from_agent_name": "${agentName}", "to_agent_name": "TARGET_NAME", "ping_type": "assignment", "task_title": "What to do", "task_description": "Detailed instructions", "tas_file": "path/to/file"}'
+${pingBase} -d '{"from_agent_name": "YOUR_NAME", "to_agent_name": "TARGET_NAME", "ping_type": "TYPE", "task_title": "Summary", "task_description": "Details", "tas_file": "path/to/file"}'
+\`\`\`
+
+Do NOT write a file called "ping" to anyone's inbox. That does nothing. You MUST use Bash to run the curl command above.
+
+### Ping types:
+
+**1. assignment** -- assign new work to another agent:
+\`\`\`bash
+${pingBase} -d '{"from_agent_name": "YOUR_NAME", "to_agent_name": "TARGET", "ping_type": "assignment", "task_title": "What to do", "task_description": "Detailed instructions", "tas_file": "path/to/file"}'
 \`\`\`
 Creates a tracked task, wakes the agent, they start immediately.
 
-**2. Completion -- you finished an assigned task, notify the assigner:**
+**2. completion** -- you finished an assigned task, notify the assigner:
 \`\`\`bash
-${pingBase} -d '{"from_agent_name": "${agentName}", "to_agent_name": "TARGET_NAME", "ping_type": "completion", "task_title": "Task done: brief summary", "task_description": "What was completed and where the output is", "tas_file": "path/to/output"}'
+${pingBase} -d '{"from_agent_name": "YOUR_NAME", "to_agent_name": "TARGET", "ping_type": "completion", "task_title": "Done: brief summary", "task_description": "What was completed and where the output is", "tas_file": "path/to/output"}'
 \`\`\`
 Marks your current task as completed, wakes the other agent. Does NOT create a new task.
 
-**3. Status update -- send info without creating a task:**
+**3. status_update** -- send info without creating a task:
 \`\`\`bash
-${pingBase} -d '{"from_agent_name": "${agentName}", "to_agent_name": "TARGET_NAME", "ping_type": "status_update", "task_title": "Update summary", "task_description": "Details"}'
+${pingBase} -d '{"from_agent_name": "YOUR_NAME", "to_agent_name": "TARGET", "ping_type": "status_update", "task_title": "Update summary", "task_description": "Details"}'
 \`\`\`
 Just wakes the agent with a message. No task created. Use for acknowledgments, questions, or feedback.
 
@@ -171,19 +196,46 @@ Just wakes the agent with a message. No task created. Use for acknowledgments, q
 - **Finished work someone assigned you?** Use \`completion\`
 - **Acknowledging feedback, asking a question, or sending info?** Use \`status_update\`
 
-### Workflow:
-1. Produce your work, save to your TAS outbox
-2. If handing off: copy to the recipient's inbox
-3. Ping using the curl HTTP command above (NOT by writing a file -- use the actual curl command via Bash)
-4. Never leave work passively waiting
+## Standard workflow
 
-### CRITICAL: How to ping
-Pinging is an HTTP API call using the Bash tool to run curl. Example:
-\`\`\`
-curl -s -X POST http://localhost:3000/api/teams/${teamId || "TEAM_ID"}/ping -H "Content-Type: application/json" -d '{"from_agent_name":"...","to_agent_name":"...","ping_type":"completion","task_title":"...","task_description":"..."}'
-\`\`\`
-Do NOT write a file called "ping" to anyone's inbox. That does nothing. You MUST use Bash to run the curl command.`;
+1. Check your inbox for pending work
+2. Do your work
+3. Save output to your outbox
+4. Copy to recipient's inbox (if handing off)
+5. Ping the recipient via curl (REQUIRED -- they will not see your work otherwise)
+6. Clean up: remove files you have consumed from inboxes/outboxes
+7. Never leave work passively waiting -- always ping after producing output
+`;
+
+  fs.writeFileSync(bumbaPath, content);
+  return bumbaPath;
+}
+
+/**
+ * Generate agent-specific context (identity, paths, teammates).
+ * This is the small per-agent block that complements the shared BUMBA.md.
+ */
+export function getAgentContext(teamDir: string, agentName: string, allAgentNames: string[]): string {
+  const slug = agentName.replace(/\s+/g, "_");
+  const tasDir = path.join(teamDir, "TAS").replace(/\\/g, "/");
+
+  const teammates = allAgentNames
+    .filter((n) => n !== agentName)
+    .map((n) => n.replace(/\s+/g, "_"));
+
+  let context = `## Your identity
+- **Name:** ${agentName}
+- **TAS inbox:** \`${tasDir}/${slug}/inbox/\`
+- **TAS outbox:** \`${tasDir}/${slug}/outbox/\`
+- **Shared:** \`${tasDir}/shared/\``;
+
+  if (teammates.length > 0) {
+    context += `\n\n## Your teammates\n`;
+    for (const other of teammates) {
+      context += `- **${other}:** inbox at \`${tasDir}/${other}/inbox/\`, outbox at \`${tasDir}/${other}/outbox/\`\n`;
+    }
+    context += `\nWhen pinging, use \`"from_agent_name": "${agentName}"\` in your curl commands.`;
   }
 
-  return instructions;
+  return context;
 }

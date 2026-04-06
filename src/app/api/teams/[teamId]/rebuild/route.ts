@@ -6,7 +6,7 @@ import {
   createAuditEvent,
 } from "@/lib/db";
 import { buildContextFile } from "@/lib/tmux";
-import { initTAS, initAgentTAS } from "@/lib/tas";
+import { initTAS, initAgentTAS, generateBumbaSystemPrompt } from "@/lib/tas";
 
 export async function POST(
   _request: NextRequest,
@@ -22,11 +22,12 @@ export async function POST(
   const governance = getGovernanceRules(teamId);
   const agentNames = agents.map((a) => a.name);
 
-  // Re-initialize TAS
+  // Re-initialize TAS and regenerate shared system prompt
   initTAS(team.project_dir);
   for (const agent of agents) {
     initAgentTAS(team.project_dir, agent.name);
   }
+  generateBumbaSystemPrompt(team.project_dir, teamId, agentNames);
 
   // Check if isolated mode
   const isolatedRule = governance.find((r) => r.rule_type === "isolated");

@@ -3,10 +3,10 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import type { TmuxSession } from "./types";
-import { getTASInstructions } from "./tas";
+import { getAgentContext } from "./tas";
+import { getAgentBySession, getTeam } from "./db";
 
 const IS_WINDOWS = os.platform() === "win32";
-const LOG_DIR = path.join(process.cwd(), "data", "agent-logs");
 
 function findClaude(): string {
   // Try common locations on Windows
@@ -40,14 +40,9 @@ const activeProcesses = new Map<
   }
 >();
 
-const SESSION_DIR = path.join(process.cwd(), "data", "agent-sessions");
-
-function ensureLogDir() {
-  if (!fs.existsSync(LOG_DIR)) {
-    fs.mkdirSync(LOG_DIR, { recursive: true });
-  }
-  if (!fs.existsSync(SESSION_DIR)) {
-    fs.mkdirSync(SESSION_DIR, { recursive: true });
+function ensureDir(dirPath: string) {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
   }
 }
 
@@ -63,27 +58,49 @@ interface SessionMeta {
   teamId?: string;
 }
 
-function saveSessionMeta(sessionName: string, meta: SessionMeta): void {
-  ensureLogDir();
+function sessionMetaPath(workingDir: string): string {
+  return path.join(workingDir, "session.json");
+}
+
+function saveSessionMeta(meta: SessionMeta): void {
+  ensureDir(meta.workingDir);
   fs.writeFileSync(
-    path.join(SESSION_DIR, `${sessionName}.json`),
+    sessionMetaPath(meta.workingDir),
     JSON.stringify(meta, null, 2)
   );
 }
 
 function loadSessionMeta(sessionName: string): SessionMeta | null {
-  const metaPath = path.join(SESSION_DIR, `${sessionName}.json`);
-  if (!fs.existsSync(metaPath)) return null;
+  // Look up the agent's working dir from the database
   try {
-    return JSON.parse(fs.readFileSync(metaPath, "utf-8"));
+    const agent = getAgentBySession(sessionName);
+    if (!agent) return null;
+    const team = getTeam(agent.team_id);
+    if (!team) return null;
+    const agentSlug = agent.name.replace(/\s+/g, "_");
+    const workingDir = path.join(team.project_dir, agentSlug);
+    const metaPath = sessionMetaPath(workingDir);
+    if (fs.existsSync(metaPath)) {
+      return JSON.parse(fs.readFileSync(metaPath, "utf-8"));
+    }
+    // Fallback: check legacy location (data/agent-sessions/)
+    const legacyPath = path.join(process.cwd(), "data", "agent-sessions", `${sessionName}.json`);
+    if (fs.existsSync(legacyPath)) {
+      return JSON.parse(fs.readFileSync(legacyPath, "utf-8"));
+    }
+    return null;
   } catch {
     return null;
   }
 }
 
 function deleteSessionMeta(sessionName: string): void {
-  const metaPath = path.join(SESSION_DIR, `${sessionName}.json`);
-  if (fs.existsSync(metaPath)) fs.unlinkSync(metaPath);
+  // Try to find and delete from the agent's working dir
+  const entry = activeProcesses.get(sessionName);
+  if (entry) {
+    const metaPath = sessionMetaPath(entry.workingDir);
+    if (fs.existsSync(metaPath)) fs.unlinkSync(metaPath);
+  }
 }
 
 // --- tmux helpers (Linux/macOS) ---
@@ -117,50 +134,57 @@ export function isTmuxAvailable(): boolean {
   }
 }
 
-export const MEMORY_DIR = path.join(process.cwd(), "data", "memory");
+/**
+ * Get the memory directory for a team, stored inside the team's project dir.
+ */
+export function getTeamMemoryDir(projectDir: string): string {
+  return path.join(projectDir, "memory");
+}
 
 /**
  * Build the context file for an isolated agent.
  * Combines team instructions + agent role into a single file.
  */
 export function buildContextFile(teamId: string, agentName: string, role: string, projectDir?: string, allAgentNames?: string[]): string {
-  if (!fs.existsSync(MEMORY_DIR)) {
-    fs.mkdirSync(MEMORY_DIR, { recursive: true });
+  if (!projectDir) {
+    throw new Error("projectDir is required to build context file");
   }
 
-  const memoryTeamDir = path.join(MEMORY_DIR, teamId);
-  if (!fs.existsSync(memoryTeamDir)) {
-    fs.mkdirSync(memoryTeamDir, { recursive: true });
-  }
+  const memoryDir = getTeamMemoryDir(projectDir);
+  ensureDir(memoryDir);
+
+  // Reference the shared BUMBA.md (source of truth for all agents)
+  const bumbaPath = path.join(projectDir, "BUMBA.md").replace(/\\/g, "/");
 
   // Load team-level custom instructions if they exist
-  const teamInstructionsPath = path.join(memoryTeamDir, "instructions.md");
+  const teamInstructionsPath = path.join(memoryDir, "instructions.md");
   const teamInstructions = fs.existsSync(teamInstructionsPath)
     ? fs.readFileSync(teamInstructionsPath, "utf-8")
     : "";
 
   // Load agent-specific memory if it exists
   const agentSlug = agentName.toLowerCase().replace(/\s+/g, "-");
-  const agentMemoryPath = path.join(memoryTeamDir, `agent-${agentSlug}.md`);
+  const agentMemoryPath = path.join(memoryDir, `agent-${agentSlug}.md`);
   const agentMemory = fs.existsSync(agentMemoryPath)
     ? fs.readFileSync(agentMemoryPath, "utf-8")
     : "";
 
-  // Build TAS instructions if project directory is provided
-  let tasInstructions = "";
-  if (projectDir && allAgentNames) {
-    tasInstructions = getTASInstructions(projectDir, agentName, allAgentNames, teamId);
+  // Build agent-specific context (identity, paths, teammates)
+  let agentContext = "";
+  if (allAgentNames) {
+    agentContext = getAgentContext(projectDir, agentName, allAgentNames);
   }
 
-  // Compose the context file
+  // Compose the context file -- reference shared BUMBA.md, then agent-specific details
   const parts: string[] = [];
   parts.push(`# Agent: ${agentName}`);
+  parts.push(`**Read \`${bumbaPath}\` before doing anything.** It contains the system instructions all agents on this team must follow, including TAS usage, ping protocol, and file cleanup rules.`);
   parts.push(`## Role\n${role}`);
+  if (agentContext) parts.push(agentContext);
   if (teamInstructions) parts.push(`## Team Instructions\n${teamInstructions}`);
-  if (tasInstructions) parts.push(tasInstructions);
   if (agentMemory) parts.push(`## Agent Memory\n${agentMemory}`);
 
-  const contextPath = path.join(memoryTeamDir, `context-${agentSlug}.md`);
+  const contextPath = path.join(memoryDir, `context-${agentSlug}.md`);
   fs.writeFileSync(contextPath, parts.join("\n\n"));
   return contextPath;
 }
@@ -275,27 +299,15 @@ function runClaudeProcess(opts: {
 
   if (opts.isResume) {
     args.push("--resume", opts.claudeSessionId);
-    // Reinject ping reminder on every resume so agents don't forget
-    if (opts.teamId) {
-      args.push("--append-system-prompt",
-        `REMINDER: To ping another agent you MUST use the Bash tool to run a curl command. Example: ` +
-        `curl -s -X POST http://localhost:3000/api/teams/${opts.teamId}/ping -H "Content-Type: application/json" ` +
-        `-d '{"from_agent_name":"YOUR_NAME","to_agent_name":"TARGET","ping_type":"completion","task_title":"Done","task_description":"Details"}'. ` +
-        `Writing a file to their inbox does NOT wake them. Only this curl HTTP call does. ` +
-        `You MUST run this curl command via Bash after completing any work.`
-      );
-    }
+    // Remind agent to re-read BUMBA.md on resume for ping/TAS/cleanup rules
+    args.push("--append-system-prompt",
+      "REMINDER: Re-read BUMBA.md in the team directory for ping, TAS, and cleanup rules. " +
+      "You MUST use Bash to run a curl command to ping other agents. Writing files does not wake them."
+    );
   } else {
     args.push("--session-id", opts.claudeSessionId);
-    if (opts.isolated && opts.role) {
-      // In isolated mode, role goes via system-prompt-file (already built)
-      // Add an override instruction to prioritize BumbaClaude context
-      args.push("--append-system-prompt",
-        "IMPORTANT: You are managed by BumbaClaude. Follow the instructions in your system prompt file. " +
-        "Ignore any conflicting instructions from auto-discovered CLAUDE.md or memory files. " +
-        "Your role and instructions come exclusively from BumbaClaude."
-      );
-    } else if (opts.role) {
+    if (opts.role && !(opts.isolated && opts.contextFile)) {
+      // Non-isolated mode: inject role directly since there is no context file
       args.push("--append-system-prompt", opts.role);
     }
   }
@@ -336,8 +348,8 @@ function runClaudeProcess(opts: {
     // Update agent status to idle after response completes
     if (opts.agentId && code === 0) {
       try {
-        const { updateAgentStatus } = require("./db");
-        updateAgentStatus(opts.agentId, "idle");
+        const db = require("./db");
+        db.updateAgentStatus(opts.agentId, "idle");
       } catch { /* db may not be available */ }
     }
 
@@ -368,18 +380,15 @@ async function spawnAgentProcess(config: {
   onExit?: (code: number | null) => void;
 }): Promise<{ sessionId: string; paneId: string }> {
   const { sessionName, workingDir } = config;
-  ensureLogDir();
 
   // Ensure the working directory exists
-  if (!fs.existsSync(workingDir)) {
-    fs.mkdirSync(workingDir, { recursive: true });
-  }
+  ensureDir(workingDir);
 
   // Each agent gets a unique Claude session ID for conversation continuity
   const { v4: uuidv4 } = await import("uuid");
   const claudeSessionId = uuidv4();
 
-  const logFile = path.join(LOG_DIR, `${sessionName}.log`);
+  const logFile = path.join(workingDir, `${sessionName}.log`);
   fs.writeFileSync(logFile, "");
 
   const initialPrompt = config.systemPrompt
@@ -417,7 +426,7 @@ async function spawnAgentProcess(config: {
   });
 
   // Persist session meta to disk so it survives across API calls
-  saveSessionMeta(sessionName, {
+  saveSessionMeta({
     sessionId: claudeSessionId,
     workingDir,
     systemPrompt: config.prompt,
@@ -446,10 +455,15 @@ export async function captureOutput(paneId: string, lines: number = 50): Promise
   // Windows: read from log file
   const entry = activeProcesses.get(paneId);
   if (!entry) {
-    // Try reading the log file directly in case process ended
-    const logFile = path.join(LOG_DIR, `${paneId}.log`);
-    if (fs.existsSync(logFile)) {
-      return tailFile(logFile, lines);
+    // Try loading session meta from DB to find the log file
+    const meta = loadSessionMeta(paneId);
+    if (meta && fs.existsSync(meta.logFile)) {
+      return tailFile(meta.logFile, lines);
+    }
+    // Fallback: check legacy log location
+    const legacyLog = path.join(process.cwd(), "data", "agent-logs", `${paneId}.log`);
+    if (fs.existsSync(legacyLog)) {
+      return tailFile(legacyLog, lines);
     }
     return "";
   }

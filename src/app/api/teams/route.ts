@@ -11,7 +11,7 @@ import {
 } from "@/lib/db";
 import { spawnAgent, buildContextFile } from "@/lib/tmux";
 import { startWatching } from "@/lib/watcher";
-import { initTAS, initAgentTAS } from "@/lib/tas";
+import { initTAS, initAgentTAS, generateBumbaSystemPrompt } from "@/lib/tas";
 
 export async function GET() {
   const teams = getAllTeams();
@@ -47,11 +47,10 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Initialize TAS
+  // Initialize TAS and generate shared system prompt
   initTAS(project_dir);
-
-  // Collect agent names for TAS instructions
   const agentNames: string[] = (agents || []).map((a: { name: string }) => a.name);
+  generateBumbaSystemPrompt(project_dir, teamId, agentNames);
 
   // Spawn agents
   const spawnedAgents = [];
