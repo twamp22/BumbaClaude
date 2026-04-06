@@ -34,7 +34,8 @@ export default function ProjectStep({ state, updateState, onNext }: ProjectStepP
     // Auto-update working directory if not manually edited
     if (!dirManuallyEdited && baseDir) {
       const slug = name.trim().replace(/\s+/g, "_");
-      const newDir = slug ? `${baseDir}/${slug}` : baseDir;
+      const separator = baseDir.includes("\\") ? "\\" : "/";
+      const newDir = slug ? `${baseDir}${separator}${slug}` : baseDir;
       updateState({ project_dir: newDir });
     }
   };
