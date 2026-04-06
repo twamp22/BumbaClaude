@@ -23,16 +23,16 @@ export async function POST(
   const agentNames = agents.map((a) => a.name);
 
   // Re-initialize TAS and regenerate shared system prompt
-  initTAS(team.project_dir);
+  initTAS(teamId);
   for (const agent of agents) {
-    initAgentTAS(team.project_dir, agent.name);
+    initAgentTAS(teamId, agent.name);
   }
   // Build governance map for prompt generation
   const governanceMap: Record<string, string> = {};
   for (const rule of governance) {
     governanceMap[rule.rule_type] = rule.rule_value;
   }
-  generateBumbaSystemPrompt({ teamDir: team.project_dir, teamId, agentNames, governance: governanceMap });
+  generateBumbaSystemPrompt({ teamId, agentNames, governance: governanceMap });
 
   // Check if isolated mode
   const isolatedRule = governance.find((r) => r.rule_type === "isolated");
@@ -41,7 +41,7 @@ export async function POST(
   // Rebuild context files for all agents
   if (useIsolation) {
     for (const agent of agents) {
-      buildContextFile(teamId, agent.name, agent.role, team.project_dir, agentNames, governanceMap);
+      buildContextFile(teamId, agent.name, agent.role, agentNames, governanceMap);
     }
   }
 

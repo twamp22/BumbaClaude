@@ -11,7 +11,7 @@ import {
 } from "@/lib/db";
 import { spawnAgent, buildContextFile } from "@/lib/tmux";
 import { startWatching } from "@/lib/watcher";
-import { initTAS, initAgentTAS, generateBumbaSystemPrompt } from "@/lib/tas";
+import { initTAS, initAgentTAS, generateBumbaSystemPrompt, getTeamDataDir } from "@/lib/tas";
 
 export async function GET() {
   const teams = getAllTeams();
@@ -48,9 +48,10 @@ export async function POST(request: NextRequest) {
   }
 
   // Initialize TAS and generate shared system prompt
-  initTAS(project_dir);
+  // All team data lives in data/teams/{teamId}/ inside the BumbaClaude project
+  initTAS(teamId);
   const agentNames: string[] = (agents || []).map((a: { name: string }) => a.name);
-  generateBumbaSystemPrompt({ teamDir: project_dir, teamId, agentNames, governance: governanceMap });
+  generateBumbaSystemPrompt({ teamId, agentNames, governance: governanceMap });
 
   // Spawn agents
   const spawnedAgents = [];
@@ -60,17 +61,17 @@ export async function POST(request: NextRequest) {
       const sessionName = `bumba-${teamId.slice(0, 8)}-${agentDef.name.toLowerCase().replace(/\s+/g, "-")}`;
 
       // Initialize TAS directories for this agent
-      initAgentTAS(project_dir, agentDef.name);
+      initAgentTAS(teamId, agentDef.name);
 
       // Build isolated context file if isolation is enabled
       let contextFile: string | undefined;
       if (useIsolation) {
-        contextFile = buildContextFile(teamId, agentDef.name, agentDef.role, project_dir, agentNames, governanceMap);
+        contextFile = buildContextFile(teamId, agentDef.name, agentDef.role, agentNames, governanceMap);
       }
 
-      // Each agent gets its own subdirectory under the team's working dir
+      // Each agent gets its own subdirectory under data/teams/{teamId}/
       const agentSlug = agentDef.name.replace(/\s+/g, "_");
-      const agentWorkingDir = path.join(project_dir, agentSlug);
+      const agentWorkingDir = path.join(getTeamDataDir(teamId), agentSlug);
 
       let tmuxSession: string | null = null;
       try {

@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import path from "path";
 import { getAgentsByTeam, getTeam, createAgent, createAuditEvent, updateAgentStatus } from "@/lib/db";
 import { spawnAgent } from "@/lib/tmux";
-import { initAgentTAS } from "@/lib/tas";
+import { initAgentTAS, getTeamDataDir } from "@/lib/tas";
 
 export async function GET(
   _request: NextRequest,
@@ -30,10 +30,10 @@ export async function POST(
 
   // Each agent gets its own subdirectory under the team's working dir
   const agentSlug = body.name.replace(/\s+/g, "_");
-  const agentWorkingDir = path.join(team.project_dir, agentSlug);
+  const agentWorkingDir = path.join(getTeamDataDir(teamId), agentSlug);
 
   // Initialize TAS for this agent
-  initAgentTAS(team.project_dir, body.name);
+  initAgentTAS(teamId, body.name);
 
   let tmuxSession: string | null = null;
   try {

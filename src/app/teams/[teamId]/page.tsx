@@ -6,13 +6,15 @@ import { useTeamStatus } from "@/hooks/useTeamStatus";
 import AgentCard from "@/components/monitor/AgentCard";
 import TaskList from "@/components/monitor/TaskList";
 import TASPanel from "@/components/monitor/TASPanel";
+import ActivityFeed from "@/components/monitor/ActivityFeed";
+import ToastNotifications from "@/components/monitor/ToastNotifications";
 import TeamControls from "@/components/monitor/TeamControls";
 import StatusBadge from "@/components/shared/StatusBadge";
 
 export default function TeamMonitorPage() {
   const { teamId } = useParams<{ teamId: string }>();
-  const { team, agents, tasks, loading, error, refresh } = useTeamStatus(teamId);
-  const [rightTab, setRightTab] = useState<"tasks" | "tas">("tasks");
+  const { team, agents, tasks, governance, events, loading, error, refresh } = useTeamStatus(teamId);
+  const [rightTab, setRightTab] = useState<"tasks" | "activity" | "tas">("tasks");
 
   if (loading) {
     return (
@@ -31,9 +33,13 @@ export default function TeamMonitorPage() {
   }
 
   const autoExpand = agents.length <= 2;
+  const staleThresholdMinutes = parseInt(
+    governance.find((g) => g.rule_type === "stale_threshold_minutes")?.rule_value || "15"
+  );
 
   return (
     <div className="flex flex-col h-screen">
+      <ToastNotifications teamId={teamId} />
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-3 border-b border-zinc-800 flex-shrink-0">
         <div className="flex items-center gap-3">
@@ -55,6 +61,7 @@ export default function TeamMonitorPage() {
               key={agent.id}
               agent={agent}
               teamId={teamId}
+              tasks={tasks}
               defaultExpanded={autoExpand}
             />
           ))}
@@ -77,6 +84,16 @@ export default function TeamMonitorPage() {
               Tasks
             </button>
             <button
+              onClick={() => setRightTab("activity")}
+              className={`flex-1 px-4 py-2 text-sm font-mono transition-colors ${
+                rightTab === "activity"
+                  ? "text-zinc-100 border-b-2 border-amber-500"
+                  : "text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              Activity
+            </button>
+            <button
               onClick={() => setRightTab("tas")}
               className={`flex-1 px-4 py-2 text-sm font-mono transition-colors ${
                 rightTab === "tas"
@@ -89,7 +106,9 @@ export default function TeamMonitorPage() {
           </div>
           <div className="flex-1 overflow-y-auto p-4">
             {rightTab === "tasks" ? (
-              <TaskList tasks={tasks} agents={agents} teamId={teamId} onRefresh={refresh} />
+              <TaskList tasks={tasks} agents={agents} teamId={teamId} staleThresholdMinutes={staleThresholdMinutes} onRefresh={refresh} />
+            ) : rightTab === "activity" ? (
+              <ActivityFeed events={events} />
             ) : (
               <TASPanel teamId={teamId} />
             )}

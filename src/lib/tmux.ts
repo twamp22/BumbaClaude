@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import type { TmuxSession } from "./types";
-import { getAgentContext, generateBumbaSystemPrompt } from "./tas";
+import { getAgentContext, generateBumbaSystemPrompt, getTeamDataDir } from "./tas";
 import { getAgentBySession, getTeam } from "./db";
 
 const IS_WINDOWS = os.platform() === "win32";
@@ -78,7 +78,7 @@ function loadSessionMeta(sessionName: string): SessionMeta | null {
     const team = getTeam(agent.team_id);
     if (!team) return null;
     const agentSlug = agent.name.replace(/\s+/g, "_");
-    const workingDir = path.join(team.project_dir, agentSlug);
+    const workingDir = path.join(getTeamDataDir(team.id), agentSlug);
     const metaPath = sessionMetaPath(workingDir);
     if (fs.existsSync(metaPath)) {
       return JSON.parse(fs.readFileSync(metaPath, "utf-8"));
@@ -135,10 +135,10 @@ export function isTmuxAvailable(): boolean {
 }
 
 /**
- * Get the memory directory for a team, stored inside the team's project dir.
+ * Get the memory directory for a team, stored inside data/teams/{teamId}/.
  */
-export function getTeamMemoryDir(projectDir: string): string {
-  return path.join(projectDir, "memory");
+export function getTeamMemoryDir(teamId: string): string {
+  return path.join(getTeamDataDir(teamId), "memory");
 }
 
 /**
@@ -150,16 +150,14 @@ export function buildContextFile(
   teamId: string,
   agentName: string,
   role: string,
-  projectDir: string,
   allAgentNames: string[],
   governance?: Record<string, string>,
 ): string {
-  const memoryDir = getTeamMemoryDir(projectDir);
+  const memoryDir = getTeamMemoryDir(teamId);
   ensureDir(memoryDir);
 
   // Generate the BUMBA.md content (also writes to disk for human reference)
   const bumbaContent = generateBumbaSystemPrompt({
-    teamDir: projectDir,
     teamId,
     agentNames: allAgentNames,
     governance,
@@ -179,7 +177,7 @@ export function buildContextFile(
     : "";
 
   // Build agent-specific context (identity, paths, teammates)
-  const agentContext = getAgentContext(projectDir, agentName, allAgentNames);
+  const agentContext = getAgentContext(agentName, allAgentNames);
 
   // Compose the context file -- inline BUMBA.md content, then agent-specific details
   const parts: string[] = [];

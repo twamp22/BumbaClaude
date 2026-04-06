@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTeam } from "@/lib/db";
-import { getTASContents } from "@/lib/tas";
+import { getTASContents, getTeamDataDir } from "@/lib/tas";
 import fs from "fs";
 import path from "path";
 
@@ -14,7 +14,7 @@ export async function GET(
     return NextResponse.json({ error: "Team not found" }, { status: 404 });
   }
 
-  const contents = getTASContents(team.project_dir);
+  const contents = getTASContents(teamId);
   return NextResponse.json(contents);
 }
 
@@ -33,7 +33,7 @@ export async function POST(
   const { filePath } = body;
 
   // Security: ensure the path is within the team's TAS directory
-  const tasDir = path.join(team.project_dir, "TAS");
+  const tasDir = path.join(getTeamDataDir(teamId), "TAS");
   const resolved = path.resolve(filePath);
   if (!resolved.startsWith(path.resolve(tasDir))) {
     return NextResponse.json({ error: "Access denied" }, { status: 403 });

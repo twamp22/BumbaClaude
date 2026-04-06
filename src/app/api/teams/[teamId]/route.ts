@@ -4,7 +4,10 @@ import {
   getAgentsByTeam,
   getTasksByTeam,
   getGovernanceRules,
+  getAuditEvents,
   updateTeamStatus,
+  updateAgentStatus,
+  updateTaskStatus,
   createAuditEvent,
   deleteTeam,
 } from "@/lib/db";
@@ -24,8 +27,47 @@ export async function GET(
   const agents = getAgentsByTeam(teamId);
   const tasks = getTasksByTeam(teamId);
   const governance = getGovernanceRules(teamId);
+  const events = getAuditEvents(teamId, { limit: 100 });
 
-  return NextResponse.json({ team, agents, tasks, governance });
+  // Reconcile agent/task state inconsistencies
+  for (const agent of agents) {
+    const agentInProgressTasks = tasks.filter(
+      (t) => t.assigned_agent_id === agent.id && t.status === "in_progress"
+    );
+    const agentPendingTasks = tasks.filter(
+      (t) => t.assigned_agent_id === agent.id &&
+        (t.status === "pending" || t.status === "claimed")
+    );
+
+    if (agent.status === "idle" && agentInProgressTasks.length > 0) {
+      // Agent is idle but has in_progress tasks -- tasks are orphaned, mark them blocked
+      for (const task of agentInProgressTasks) {
+        updateTaskStatus(task.id, "blocked");
+        task.status = "blocked";
+      }
+    } else if (
+      agent.status === "working" &&
+      agentInProgressTasks.length === 0 &&
+      agentPendingTasks.length === 0
+    ) {
+      // Agent claims working but has no active tasks -- mark idle
+      updateAgentStatus(agent.id, "idle");
+      agent.status = "idle";
+    }
+  }
+
+  // Enrich events with agent names
+  const enrichedEvents = events.map((event) => {
+    const agent = event.agent_id
+      ? agents.find((a) => a.id === event.agent_id)
+      : null;
+    return {
+      ...event,
+      agent_name: agent?.name || null,
+    };
+  });
+
+  return NextResponse.json({ team, agents, tasks, governance, events: enrichedEvents });
 }
 
 export async function PATCH(
@@ -85,8 +127,8 @@ export async function DELETE(
     }),
   });
 
-  // Clean up filesystem artifacts (TAS, BUMBA.md, context files, agent dirs)
-  cleanupTeamFiles(team.project_dir, agents.map((a) => a.name));
+  // Clean up filesystem artifacts (entire data/teams/{teamId}/ directory)
+  cleanupTeamFiles(teamId);
 
   deleteTeam(teamId);
   return NextResponse.json({ ok: true });

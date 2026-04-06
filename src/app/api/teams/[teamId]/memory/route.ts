@@ -14,7 +14,7 @@ export async function GET(
     return NextResponse.json({ error: "Team not found" }, { status: 404 });
   }
 
-  const memoryDir = getTeamMemoryDir(team.project_dir);
+  const memoryDir = getTeamMemoryDir(teamId);
   const instructionsPath = path.join(memoryDir, "instructions.md");
 
   const instructions = fs.existsSync(instructionsPath)
@@ -37,7 +37,7 @@ export async function PUT(
   const body = await request.json();
   const { instructions } = body;
 
-  const memoryDir = getTeamMemoryDir(team.project_dir);
+  const memoryDir = getTeamMemoryDir(teamId);
   if (!fs.existsSync(memoryDir)) {
     fs.mkdirSync(memoryDir, { recursive: true });
   }

@@ -2,18 +2,26 @@ import fs from "fs";
 import path from "path";
 
 /**
+ * All team data lives inside the BumbaClaude project: data/teams/{teamId}/
+ * Nothing is written to the user's project_dir.
+ */
+export function getTeamDataDir(teamId: string): string {
+  return path.join(process.cwd(), "team_data", teamId);
+}
+
+/**
  * Team Attached Storage (TAS)
  *
  * Directory structure:
- *   {teamDir}/TAS/
+ *   data/teams/{teamId}/TAS/
  *     shared/                  -- team-wide shared files
  *     {AgentName}/
  *       inbox/                 -- files sent TO this agent
  *       outbox/                -- files produced BY this agent
  */
 
-export function initTAS(teamDir: string): string {
-  const tasDir = path.join(teamDir, "TAS");
+export function initTAS(teamId: string): string {
+  const tasDir = path.join(getTeamDataDir(teamId), "TAS");
   const sharedDir = path.join(tasDir, "shared");
 
   if (!fs.existsSync(tasDir)) fs.mkdirSync(tasDir, { recursive: true });
@@ -22,9 +30,9 @@ export function initTAS(teamDir: string): string {
   return tasDir;
 }
 
-export function initAgentTAS(teamDir: string, agentName: string): { inbox: string; outbox: string } {
+export function initAgentTAS(teamId: string, agentName: string): { inbox: string; outbox: string } {
   const slug = agentName.replace(/\s+/g, "_");
-  const agentTAS = path.join(teamDir, "TAS", slug);
+  const agentTAS = path.join(getTeamDataDir(teamId), "TAS", slug);
   const inbox = path.join(agentTAS, "inbox");
   const outbox = path.join(agentTAS, "outbox");
 
@@ -75,8 +83,8 @@ function listDir(dirPath: string, basePath: string): TASFile[] {
   }
 }
 
-export function getTASContents(teamDir: string): TASContents {
-  const tasDir = path.join(teamDir, "TAS");
+export function getTASContents(teamId: string): TASContents {
+  const tasDir = path.join(getTeamDataDir(teamId), "TAS");
 
   if (!fs.existsSync(tasDir)) {
     return { shared: [], agents: [] };
@@ -106,7 +114,6 @@ export function getTASContents(teamDir: string): TASContents {
 }
 
 export interface BumbaPromptOptions {
-  teamDir: string;
   teamId: string;
   agentNames: string[];
   governance?: Record<string, string>;
@@ -114,14 +121,17 @@ export interface BumbaPromptOptions {
 
 /**
  * Generate the shared BumbaClaude system prompt.
- * Writes to {teamDir}/BUMBA.md for human reference AND returns the content
- * so it can be inlined directly into agent context files.
+ * Writes to data/teams/{teamId}/BUMBA.md for human reference AND returns the
+ * content so it can be inlined directly into agent context files.
  */
 export function generateBumbaSystemPrompt(opts: BumbaPromptOptions): string {
-  const { teamDir, teamId, agentNames, governance } = opts;
-  // Use relative path from agent working dirs ({teamDir}/{AgentSlug}/) to TAS
+  const { teamId, agentNames, governance } = opts;
+  const teamDataDir = getTeamDataDir(teamId);
+  // Use relative path from agent working dirs (data/teams/{teamId}/{AgentSlug}/) to TAS
   const tasDir = "../TAS";
-  const bumbaPath = path.join(teamDir, "BUMBA.md");
+  const bumbaPath = path.join(teamDataDir, "BUMBA.md");
+
+  if (!fs.existsSync(teamDataDir)) fs.mkdirSync(teamDataDir, { recursive: true });
 
   const agentSlugs = agentNames.map((n) => n.replace(/\s+/g, "_"));
   const canRunCommands = governance?.can_run_commands !== "false";
@@ -148,28 +158,51 @@ Do NOT write a file called "ping" to anyone's inbox. That does nothing. You MUST
 
 ### Ping types:
 
-**1. assignment** -- assign new work to another agent:
+**1. start** -- announce you are STARTING work on a task (MANDATORY):
+\`\`\`bash
+${pingBase} -d '{"from_agent_name": "YOUR_NAME", "ping_type": "start", "task_title": "STARTING: What I am working on"}'
+\`\`\`
+Updates your status to "working" in the dashboard. The operator sees exactly what you are doing. You MUST send this ping BEFORE you begin any task. No \`to_agent_name\` is needed for start pings.
+
+**2. assignment** -- assign new work to another agent:
 \`\`\`bash
 ${pingBase} -d '{"from_agent_name": "YOUR_NAME", "to_agent_name": "TARGET", "ping_type": "assignment", "task_title": "What to do", "task_description": "Detailed instructions", "tas_file": "path/to/file"}'
 \`\`\`
 Creates a tracked task, wakes the agent, they start immediately.
 
-**2. completion** -- you finished an assigned task, notify the assigner:
+**3. completion** -- you finished an assigned task, notify the assigner (MANDATORY):
 \`\`\`bash
-${pingBase} -d '{"from_agent_name": "YOUR_NAME", "to_agent_name": "TARGET", "ping_type": "completion", "task_title": "Done: brief summary", "task_description": "What was completed and where the output is", "tas_file": "path/to/output"}'
+${pingBase} -d '{"from_agent_name": "YOUR_NAME", "to_agent_name": "TARGET", "ping_type": "completion", "task_id": "THE_TASK_ID", "task_title": "COMPLETED: What I finished", "task_description": "What was completed and where the output is", "tas_file": "path/to/output"}'
 \`\`\`
-Marks your current task as completed, wakes the other agent. Does NOT create a new task.
+Marks your current task as completed, updates your status to "idle", wakes the other agent. Does NOT create a new task.
 
-**3. status_update** -- send info without creating a task:
+**IMPORTANT:** Always include the \`task_id\` field in completion pings. When you receive an assignment, the message includes a Task ID -- save it and use it when you send your completion ping. This ensures the correct task is marked as completed in the dashboard.
+
+**4. status_update** -- send info without creating a task:
 \`\`\`bash
 ${pingBase} -d '{"from_agent_name": "YOUR_NAME", "to_agent_name": "TARGET", "ping_type": "status_update", "task_title": "Update summary", "task_description": "Details"}'
 \`\`\`
 Just wakes the agent with a message. No task created. Use for acknowledgments, questions, or feedback.
 
 ### Which ping type to use:
+- **About to start working on something?** Use \`start\` (REQUIRED, ALWAYS)
 - **Giving someone work to do?** Use \`assignment\`
-- **Finished work someone assigned you?** Use \`completion\`
+- **Finished work someone assigned you?** Use \`completion\` (REQUIRED, ALWAYS)
 - **Acknowledging feedback, asking a question, or sending info?** Use \`status_update\`
+
+### CRITICAL: Start and completion pings are MANDATORY
+Every task MUST have a start ping at the beginning and a completion ping at the end. The dashboard operator relies on these to know what you are doing. If you skip them, the operator cannot track your work and will assume you are idle or broken. The dashboard has a watchdog that detects agents working without a start ping.
+
+**Before starting ANY work:**
+1. Send a \`start\` ping with a clear task_title describing what you are about to do
+2. Then do your work
+
+**After finishing ANY work:**
+1. Send a \`completion\` ping with the \`task_id\` from your assignment and a clear task_title summarizing what you completed
+2. Then stop and wait for the next assignment
+
+**Tracking task IDs:**
+When you receive an assignment ping, the message includes a \`Task ID: xxx\` line. Save this ID. You MUST include it as \`"task_id": "xxx"\` in your completion ping so the dashboard marks the correct task as done.
 
 ### If a ping fails
 If your curl command returns a non-200 status or an error, retry once. If it fails again, save a note in your outbox describing what you tried to send and to whom, then continue with your other work. Do not loop or keep retrying.`;
@@ -249,12 +282,14 @@ You will receive input from two sources. Distinguish them by their prefix:
 ## Standard workflow
 
 1. Check your inbox for pending work
-2. Do your work
-3. Save output to your outbox
-4. Copy to recipient's inbox (if handing off)
-5. Ping the recipient (REQUIRED -- they will not see your work otherwise)
-6. Clean up: remove files you have consumed from your inbox
-7. If there is no more work to do, **stop and wait**. Do not poll your inbox, do not self-assign new work, and do not start speculative tasks. You will be woken by a ping or user message when new work arrives.
+2. **Send a START ping** -- announce what you are about to work on (REQUIRED)
+3. Do your work
+4. Save output to your outbox
+5. Copy to recipient's inbox (if handing off)
+6. **Send a COMPLETION ping** -- announce what you finished (REQUIRED)
+7. Ping the recipient with an assignment if handing off (REQUIRED -- they will not see your work otherwise)
+8. Clean up: remove files you have consumed from your inbox
+9. If there is no more work to do, **stop and wait**. Do not poll your inbox, do not self-assign new work, and do not start speculative tasks. You will be woken by a ping or user message when new work arrives.
 `;
 
   fs.writeFileSync(bumbaPath, content);
@@ -265,9 +300,9 @@ You will receive input from two sources. Distinguish them by their prefix:
  * Generate agent-specific context (identity, paths, teammates).
  * This is the small per-agent block that complements the shared BUMBA.md content.
  */
-export function getAgentContext(teamDir: string, agentName: string, allAgentNames: string[]): string {
+export function getAgentContext(agentName: string, allAgentNames: string[]): string {
   const slug = agentName.replace(/\s+/g, "_");
-  // Relative path from agent working dir ({teamDir}/{AgentSlug}/) to TAS
+  // Relative path from agent working dir (data/teams/{teamId}/{AgentSlug}/) to TAS
   const tasDir = "../TAS";
 
   const teammates = allAgentNames
@@ -292,34 +327,17 @@ export function getAgentContext(teamDir: string, agentName: string, allAgentName
 }
 
 /**
- * Remove all team filesystem artifacts (TAS, BUMBA.md, memory, agent dirs, logs).
- * Called on hard delete. Does NOT remove the project_dir itself since the user owns that.
+ * Remove all team filesystem artifacts.
+ * Everything lives under data/teams/{teamId}/, so a single directory removal
+ * cleans up TAS, BUMBA.md, memory, agent dirs, logs, and session metadata.
  */
-export function cleanupTeamFiles(teamDir: string, agentNames: string[]): void {
-  const toRemove = [
-    path.join(teamDir, "TAS"),
-    path.join(teamDir, "BUMBA.md"),
-    path.join(teamDir, "memory"),
-  ];
-
-  // Agent working directories (each agent gets {teamDir}/{AgentSlug}/)
-  for (const name of agentNames) {
-    const slug = name.replace(/\s+/g, "_");
-    toRemove.push(path.join(teamDir, slug));
-  }
-
-  for (const target of toRemove) {
-    try {
-      if (!fs.existsSync(target)) continue;
-      const stat = fs.statSync(target);
-      if (stat.isDirectory()) {
-        fs.rmSync(target, { recursive: true, force: true });
-      } else {
-        fs.unlinkSync(target);
-      }
-    } catch {
-      // Best-effort cleanup -- log but don't fail the delete
-      console.error(`Failed to remove ${target} during team cleanup`);
+export function cleanupTeamFiles(teamId: string): void {
+  const teamDataDir = getTeamDataDir(teamId);
+  try {
+    if (fs.existsSync(teamDataDir)) {
+      fs.rmSync(teamDataDir, { recursive: true, force: true });
     }
+  } catch {
+    console.error(`Failed to remove ${teamDataDir} during team cleanup`);
   }
 }
