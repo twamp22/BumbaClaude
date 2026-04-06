@@ -35,24 +35,31 @@ export async function GET(
     lastOutputLength.set(agentId, currentLength);
 
     if (isProducingOutput && agent.status === "idle") {
-      const tasks = getTasksByTeam(teamId);
-      const hasActiveTask = tasks.some(
-        (t) => t.assigned_agent_id === agentId &&
-          (t.status === "in_progress" || t.status === "claimed")
-      );
+      // Grace period: don't flag agents during initial boot-up (first 60 seconds)
+      const spawnedAt = new Date(agent.spawned_at).getTime();
+      const elapsed = Date.now() - spawnedAt;
+      const BOOT_GRACE_PERIOD_MS = 60_000;
 
-      if (!hasActiveTask) {
-        // Agent is working but didn't send a start ping -- flag it
-        updateAgentStatus(agentId, "working");
-        createAuditEvent({
-          team_id: teamId,
-          agent_id: agentId,
-          event_type: "watchdog_no_start_ping",
-          event_data: JSON.stringify({
-            agent_name: agent.name,
-            message: "Agent is producing output without a start ping or tracked task",
-          }),
-        });
+      if (elapsed > BOOT_GRACE_PERIOD_MS) {
+        const tasks = getTasksByTeam(teamId);
+        const hasActiveTask = tasks.some(
+          (t) => t.assigned_agent_id === agentId &&
+            (t.status === "in_progress" || t.status === "claimed")
+        );
+
+        if (!hasActiveTask) {
+          // Agent is working but didn't send a start ping -- flag it
+          updateAgentStatus(agentId, "working");
+          createAuditEvent({
+            team_id: teamId,
+            agent_id: agentId,
+            event_type: "watchdog_no_start_ping",
+            event_data: JSON.stringify({
+              agent_name: agent.name,
+              message: "Agent is producing output without a start ping or tracked task",
+            }),
+          });
+        }
       }
     }
 
