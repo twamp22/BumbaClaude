@@ -5,6 +5,7 @@ import os from "os";
 import type { TmuxSession } from "./types";
 import { getAgentContext, generateBumbaSystemPrompt, getTeamDataDir } from "./tas";
 import { getAgentBySession, getTeam } from "./db";
+import { StreamTracker } from "./stream-tracker";
 
 const IS_WINDOWS = os.platform() === "win32";
 
@@ -283,7 +284,7 @@ function runClaudeProcess(opts: {
   onExit?: (code: number | null) => void;
 }): ChildProcess {
   const claudePath = findClaude();
-  const args: string[] = ["-p"];
+  const args: string[] = ["-p", "--output-format", "stream-json", "--verbose"];
 
   // Isolation mode: inject managed context + restrict tools
   // We don't use --bare because it blocks OAuth/keychain auth (needed for Max subscriptions).
@@ -335,8 +336,9 @@ function runClaudeProcess(opts: {
 
   const logStream = fs.createWriteStream(opts.logFile, { flags: "a" });
 
+  const tracker = new StreamTracker({ logStream, agentId: opts.agentId, teamId: opts.teamId });
   child.stdout?.on("data", (data: Buffer) => {
-    logStream.write(data);
+    tracker.feed(data);
   });
 
   child.stderr?.on("data", (data: Buffer) => {
@@ -352,7 +354,7 @@ function runClaudeProcess(opts: {
   });
 
   child.on("exit", (code) => {
-    logStream.write(`\n[RESPONSE COMPLETE]\n`);
+    tracker.flush();
 
     if (opts.agentId) {
       try {

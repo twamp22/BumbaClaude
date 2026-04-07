@@ -39,13 +39,7 @@ export async function GET(
         (t.status === "pending" || t.status === "claimed")
     );
 
-    if (agent.status === "idle" && agentInProgressTasks.length > 0) {
-      // Agent is idle but has in_progress tasks -- tasks are orphaned, mark them blocked
-      for (const task of agentInProgressTasks) {
-        updateTaskStatus(task.id, "blocked");
-        task.status = "blocked";
-      }
-    } else if (
+    if (
       agent.status === "working" &&
       agentInProgressTasks.length === 0 &&
       agentPendingTasks.length === 0

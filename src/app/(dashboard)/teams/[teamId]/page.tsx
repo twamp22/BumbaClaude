@@ -7,15 +7,20 @@ import AgentCard from "@/components/monitor/AgentCard";
 import TaskList from "@/components/monitor/TaskList";
 import TASPanel from "@/components/monitor/TASPanel";
 import ActivityFeed from "@/components/monitor/ActivityFeed";
+import TokenUsagePanel from "@/components/monitor/TokenUsagePanel";
+import ToolUsagePanel from "@/components/monitor/ToolUsagePanel";
+import McpPanel from "@/components/monitor/McpPanel";
+import SchedulePanel from "@/components/monitor/SchedulePanel";
 import ToastNotifications from "@/components/monitor/ToastNotifications";
 import TeamControls from "@/components/monitor/TeamControls";
 import StatusBadge from "@/components/shared/StatusBadge";
+import LimitBadge from "@/components/dashboard/LimitBadge";
 
 export default function TeamMonitorPage() {
   const { teamId } = useParams<{ teamId: string }>();
   const router = useRouter();
   const { team, agents, tasks, governance, events, loading, error, refresh } = useTeamStatus(teamId);
-  const [rightTab, setRightTab] = useState<"tasks" | "activity" | "tas">("tasks");
+  const [rightTab, setRightTab] = useState<"tasks" | "activity" | "tas" | "usage" | "tools" | "schedules">("tasks");
 
   useEffect(() => {
     if (!loading && (error || !team)) {
@@ -52,7 +57,10 @@ export default function TeamMonitorPage() {
             {agents.length} agent{agents.length !== 1 ? "s" : ""}
           </span>
         </div>
-        <div className="text-xs font-mono text-zinc-500">{team.project_dir}</div>
+        <div className="flex items-center gap-3">
+          <LimitBadge />
+          <span className="text-xs font-mono text-zinc-500">{team.project_dir}</span>
+        </div>
       </div>
 
       {/* Main panels */}
@@ -106,14 +114,53 @@ export default function TeamMonitorPage() {
             >
               TAS
             </button>
+            <button
+              onClick={() => setRightTab("usage")}
+              className={`flex-1 px-4 py-2 text-sm font-mono transition-colors ${
+                rightTab === "usage"
+                  ? "text-zinc-100 border-b-2 border-green-500"
+                  : "text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              Usage
+            </button>
+            <button
+              onClick={() => setRightTab("tools")}
+              className={`flex-1 px-4 py-2 text-sm font-mono transition-colors ${
+                rightTab === "tools"
+                  ? "text-zinc-100 border-b-2 border-purple-500"
+                  : "text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              Tools
+            </button>
+            <button
+              onClick={() => setRightTab("schedules")}
+              className={`flex-1 px-4 py-2 text-sm font-mono transition-colors ${
+                rightTab === "schedules"
+                  ? "text-zinc-100 border-b-2 border-amber-500"
+                  : "text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              Sched
+            </button>
           </div>
           <div className="flex-1 overflow-y-auto p-4">
             {rightTab === "tasks" ? (
               <TaskList tasks={tasks} agents={agents} teamId={teamId} staleThresholdMinutes={staleThresholdMinutes} onRefresh={refresh} />
             ) : rightTab === "activity" ? (
               <ActivityFeed events={events} />
-            ) : (
+            ) : rightTab === "tas" ? (
               <TASPanel teamId={teamId} />
+            ) : rightTab === "usage" ? (
+              <TokenUsagePanel teamId={teamId} agents={agents} />
+            ) : rightTab === "tools" ? (
+              <div className="space-y-6">
+                <ToolUsagePanel teamId={teamId} />
+                <McpPanel teamId={teamId} />
+              </div>
+            ) : (
+              <SchedulePanel teamId={teamId} agents={agents} />
             )}
           </div>
         </div>

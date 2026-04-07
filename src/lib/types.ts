@@ -86,6 +86,77 @@ export interface TemplateAgent {
   };
 }
 
+export type ScheduleType = "interval" | "cron";
+
+export interface TokenUsage {
+  id: number;
+  team_id: string;
+  agent_id: string;
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_tokens: number;
+  cache_creation_tokens: number;
+  cost_usd: number;
+  model: string | null;
+  duration_ms: number | null;
+  session_id: string | null;
+  recorded_at: string;
+}
+
+export interface ToolUsage {
+  id: number;
+  team_id: string;
+  agent_id: string;
+  tool_name: string;
+  tool_input_summary: string | null;
+  is_mcp_tool: number;
+  mcp_server_name: string | null;
+  recorded_at: string;
+}
+
+export interface Schedule {
+  id: string;
+  team_id: string;
+  agent_id: string;
+  name: string;
+  schedule_type: ScheduleType;
+  schedule_value: string;
+  message: string;
+  enabled: number;
+  last_run_at: string | null;
+  run_count: number;
+  created_at: string;
+}
+
+export interface McpServer {
+  id: number;
+  team_id: string | null;
+  agent_id: string | null;
+  server_name: string;
+  status: string | null;
+  source: string;
+  discovered_at: string;
+}
+
+export interface RateLimitEvent {
+  status: string;
+  resetsAt: number;
+  rateLimitType: string;
+  overageStatus: string;
+  overageResetsAt: number;
+  isUsingOverage: boolean;
+  teamId?: string;
+  agentId?: string;
+  timestamp: string;
+}
+
+export interface LimitInfo {
+  subscriptionType: string | null;
+  rateLimitTier: string | null;
+  latestRateLimitEvent: RateLimitEvent | null;
+  rateLimitHits: number;
+}
+
 export interface TmuxSession {
   sessionName: string;
   paneIndex: string;
