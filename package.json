@@ -2,12 +2,17 @@
   "name": "bumba-claude",
   "version": "0.1.0",
   "private": true,
+  "main": "dist-electron/main.js",
   "description": "First-party compatible dashboard for Claude Code multi-agent orchestration",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "electron:compile": "tsc -p electron.tsconfig.json && cp electron/splash.html dist-electron/splash.html",
+    "electron:dev": "pnpm build && pnpm electron:compile && electron .",
+    "electron:build": "pnpm build && pnpm electron:compile && electron-builder --win",
+    "electron:preview": "pnpm build && pnpm electron:compile && electron ."
   },
   "author": "Thomas Wright",
   "license": "MIT",
@@ -27,6 +32,8 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@types/ws": "^8.18.1",
+    "electron": "^41.1.1",
+    "electron-builder": "^26.8.1",
     "eslint": "^10.2.0",
     "eslint-config-next": "^16.2.2",
     "postcss": "^8.5.8",
