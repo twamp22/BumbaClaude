@@ -95,7 +95,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ teamId: string }> }
 ) {
   const { teamId } = await params;
@@ -104,9 +104,15 @@ export async function DELETE(
     return NextResponse.json({ error: "Team not found" }, { status: 404 });
   }
 
-  // Kill any running agents first
+  const purge = request.nextUrl.searchParams.get("purge") === "true";
   const agents = getAgentsByTeam(teamId);
+  const tasks = getTasksByTeam(teamId);
+
+  // Stop all running agents
   for (const agent of agents) {
+    if (agent.status !== "completed" && agent.status !== "errored") {
+      updateAgentStatus(agent.id, "completed");
+    }
     if (agent.tmux_session) {
       try {
         await killPane(agent.tmux_session);
@@ -116,20 +122,33 @@ export async function DELETE(
     }
   }
 
-  // Audit the deletion before removing DB rows
-  createAuditEvent({
-    team_id: teamId,
-    event_type: "team_deleted",
-    event_data: JSON.stringify({
-      name: team.name,
-      project_dir: team.project_dir,
-      agent_count: agents.length,
-    }),
-  });
+  // Cancel orphaned tasks
+  for (const task of tasks) {
+    if (task.status === "in_progress" || task.status === "pending" || task.status === "claimed" || task.status === "review") {
+      updateTaskStatus(task.id, "cancelled");
+    }
+  }
 
-  // Clean up filesystem artifacts (entire data/teams/{teamId}/ directory)
-  cleanupTeamFiles(teamId);
+  if (purge) {
+    createAuditEvent({
+      team_id: teamId,
+      event_type: "team_deleted",
+      event_data: JSON.stringify({
+        name: team.name,
+        project_dir: team.project_dir,
+        agent_count: agents.length,
+      }),
+    });
+    cleanupTeamFiles(teamId);
+    deleteTeam(teamId);
+  } else {
+    updateTeamStatus(teamId, "completed");
+    createAuditEvent({
+      team_id: teamId,
+      event_type: "team_killed",
+      event_data: JSON.stringify({ reason: "manual" }),
+    });
+  }
 
-  deleteTeam(teamId);
   return NextResponse.json({ ok: true });
 }

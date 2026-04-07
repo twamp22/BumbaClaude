@@ -198,25 +198,14 @@ export default function LandingPage() {
   return (
     <div className="relative overflow-hidden">
       {/* Inline keyframe styles */}
-      <style jsx>{`
+      <style>{`
         @keyframes radar-sweep {
-          from {
-            transform: rotate(0deg);
-          }
-          to {
-            transform: rotate(360deg);
-          }
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
         @keyframes blip-pulse {
-          0%,
-          100% {
-            opacity: 0.2;
-            transform: scale(0.8);
-          }
-          50% {
-            opacity: 1;
-            transform: scale(1.2);
-          }
+          0%, 100% { opacity: 0.2; transform: scale(0.8); }
+          50% { opacity: 1; transform: scale(1.2); }
         }
       `}</style>
 

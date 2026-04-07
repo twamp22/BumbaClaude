@@ -33,18 +33,13 @@ export default function TeamControls({ team, onRefresh }: TeamControlsProps) {
     }
   };
 
-  const kill = async () => {
+  const removeTeam = async () => {
     try {
-      await fetch(`/api/teams/${team.id}/kill`, { method: "POST" });
+      await fetch(`/api/teams/${team.id}?purge=true`, { method: "DELETE" });
       window.location.href = "/";
     } catch (error) {
-      console.error("Failed to kill:", error);
+      console.error("Failed to remove:", error);
     }
-  };
-
-  const deleteTeam = async () => {
-    await fetch(`/api/teams/${team.id}`, { method: "DELETE" });
-    window.location.href = "/";
   };
 
   if (team.status === "completed" || team.status === "errored") {
@@ -63,10 +58,10 @@ export default function TeamControls({ team, onRefresh }: TeamControlsProps) {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={deleteTeam}
+            onClick={removeTeam}
             className="px-3 py-1.5 text-xs font-mono text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
           >
-            Delete
+            Remove
           </button>
           <button
             onClick={() => (window.location.href = "/")}
@@ -106,10 +101,10 @@ export default function TeamControls({ team, onRefresh }: TeamControlsProps) {
         </button>
       </div>
       <button
-        onClick={kill}
+        onClick={removeTeam}
         className="px-3 py-1.5 text-xs font-mono bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg border border-red-600/30 transition-colors"
       >
-        Kill Team
+        Remove Team
       </button>
     </div>
   );

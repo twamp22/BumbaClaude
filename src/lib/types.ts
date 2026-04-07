@@ -4,7 +4,7 @@ export type TeamStatus = "running" | "paused" | "completed" | "errored";
 export type ExecutionMode = "tmux";
 export type AgentStatus = "initializing" | "idle" | "working" | "waiting" | "completed" | "errored";
 export type ModelTier = "haiku" | "sonnet" | "opus";
-export type TaskStatus = "pending" | "claimed" | "in_progress" | "review" | "completed" | "blocked";
+export type TaskStatus = "pending" | "claimed" | "in_progress" | "review" | "completed" | "blocked" | "cancelled" | "errored";
 
 export interface Team {
   id: string;

@@ -87,14 +87,9 @@ export default function TeamSettingsPage() {
     }
   };
 
-  const deleteTeam = async () => {
-    await fetch(`/api/teams/${team.id}`, { method: "DELETE" });
+  const removeTeam = async () => {
+    await fetch(`/api/teams/${team.id}?purge=true`, { method: "DELETE" });
     window.location.href = "/";
-  };
-
-  const killTeam = async () => {
-    await fetch(`/api/teams/${team.id}/kill`, { method: "POST" });
-    router.refresh();
   };
 
   const isActive = team.status === "running" || team.status === "paused";
@@ -331,22 +326,12 @@ export default function TeamSettingsPage() {
       {/* Danger zone */}
       <div className="bg-zinc-900 border border-red-900/30 rounded-lg p-4 space-y-3">
         <h2 className="font-mono font-bold text-red-400 text-sm uppercase tracking-wider">Danger Zone</h2>
-        <div className="flex gap-3">
-          {isActive && (
-            <button
-              onClick={killTeam}
-              className="px-4 py-2 text-sm font-mono bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg border border-red-600/30 transition-colors"
-            >
-              Kill Team
-            </button>
-          )}
-          <button
-            onClick={deleteTeam}
-            className="px-4 py-2 text-sm font-mono bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg border border-red-600/30 transition-colors"
-          >
-            Delete Team
-          </button>
-        </div>
+        <button
+          onClick={removeTeam}
+          className="px-4 py-2 text-sm font-mono bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg border border-red-600/30 transition-colors"
+        >
+          Remove Team
+        </button>
       </div>
     </div>
   );

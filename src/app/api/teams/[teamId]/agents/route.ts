@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import path from "path";
-import { getAgentsByTeam, getTeam, createAgent, createAuditEvent, updateAgentStatus } from "@/lib/db";
-import { spawnAgent } from "@/lib/tmux";
+import { getAgentsByTeam, getTeam, getGovernanceRules, createAgent, createAuditEvent, updateAgentStatus } from "@/lib/db";
+import { spawnAgent, buildContextFile } from "@/lib/tmux";
 import { initAgentTAS, getTeamDataDir } from "@/lib/tas";
 
 export async function GET(
@@ -35,6 +35,17 @@ export async function POST(
   // Initialize TAS for this agent
   initAgentTAS(teamId, body.name);
 
+  // Build governance map and context file (same as team creation)
+  const governanceRules = getGovernanceRules(teamId);
+  const governanceMap: Record<string, string> = {};
+  for (const rule of governanceRules) {
+    governanceMap[rule.rule_type] = rule.rule_value;
+  }
+
+  const existingAgents = getAgentsByTeam(teamId);
+  const allAgentNames = [...existingAgents.map((a) => a.name), body.name];
+  const contextFile = buildContextFile(teamId, body.name, body.role, allAgentNames, governanceMap);
+
   let tmuxSession: string | null = null;
   try {
     const result = await spawnAgent({
@@ -43,6 +54,11 @@ export async function POST(
       prompt: body.role,
       systemPrompt: body.system_prompt || undefined,
       model: body.model_tier,
+      isolated: true,
+      contextFile,
+      governance: governanceMap,
+      agentId,
+      teamId,
       onExit: (code) => {
         updateAgentStatus(agentId, code === 0 ? "completed" : "errored");
         createAuditEvent({

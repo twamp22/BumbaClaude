@@ -3,13 +3,24 @@ import type { IncomingMessage } from "http";
 
 const PORT = parseInt(process.env.WS_PORT || "3001");
 
-let wss: WebSocketServer | null = null;
-const teamClients = new Map<string, Set<WebSocket>>();
+const globalForWs = globalThis as unknown as {
+  _wss?: WebSocketServer;
+  _wsTeamClients?: Map<string, Set<WebSocket>>;
+};
+
+function getTeamClients(): Map<string, Set<WebSocket>> {
+  if (!globalForWs._wsTeamClients) {
+    globalForWs._wsTeamClients = new Map();
+  }
+  return globalForWs._wsTeamClients;
+}
 
 export function getWebSocketServer(): WebSocketServer {
-  if (wss) return wss;
+  if (globalForWs._wss) return globalForWs._wss;
 
-  wss = new WebSocketServer({ port: PORT });
+  const teamClients = getTeamClients();
+  const wss = new WebSocketServer({ port: PORT });
+  globalForWs._wss = wss;
 
   wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
     const url = new URL(req.url || "/", `http://localhost:${PORT}`);
@@ -56,6 +67,7 @@ export interface WsEvent {
 }
 
 export function broadcast(teamId: string, event: Omit<WsEvent, "timestamp" | "teamId">): void {
+  const teamClients = getTeamClients();
   const clients = teamClients.get(teamId);
   if (!clients || clients.size === 0) return;
 
@@ -73,15 +85,16 @@ export function broadcast(teamId: string, event: Omit<WsEvent, "timestamp" | "te
 }
 
 export function broadcastAll(event: Omit<WsEvent, "timestamp" | "teamId">): void {
+  const teamClients = getTeamClients();
   for (const [teamId] of teamClients) {
     broadcast(teamId, event);
   }
 }
 
 export function getConnectedTeamIds(): string[] {
-  return Array.from(teamClients.keys());
+  return Array.from(getTeamClients().keys());
 }
 
 export function getClientCount(teamId: string): number {
-  return teamClients.get(teamId)?.size || 0;
+  return getTeamClients().get(teamId)?.size || 0;
 }

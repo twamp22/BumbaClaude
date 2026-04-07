@@ -24,13 +24,8 @@ export default function TeamNavItem({ team }: TeamNavItemProps) {
     window.location.reload();
   };
 
-  const kill = async () => {
-    await fetch(`/api/teams/${team.id}/kill`, { method: "POST" });
-    window.location.reload();
-  };
-
-  const deleteTeam = async () => {
-    await fetch(`/api/teams/${team.id}`, { method: "DELETE" });
+  const removeTeam = async () => {
+    await fetch(`/api/teams/${team.id}?purge=true`, { method: "DELETE" });
     window.location.href = "/";
   };
 
@@ -63,8 +58,8 @@ export default function TeamNavItem({ team }: TeamNavItemProps) {
     },
     { label: "", onClick: () => {}, separator: true },
     {
-      label: isActive ? "Kill Team" : "Delete Team",
-      onClick: isActive ? kill : deleteTeam,
+      label: "Remove Team",
+      onClick: removeTeam,
       variant: "danger",
     },
   ];

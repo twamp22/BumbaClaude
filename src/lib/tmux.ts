@@ -354,14 +354,30 @@ function runClaudeProcess(opts: {
   child.on("exit", (code) => {
     logStream.write(`\n[RESPONSE COMPLETE]\n`);
 
-    // Update agent status and auto-complete orphaned tasks after response completes
-    if (opts.agentId && code === 0) {
+    if (opts.agentId) {
       try {
         const db = require("./db");
-        db.updateAgentStatus(opts.agentId, "idle");
+        const isCleanExit = code === 0;
+        const agentStatus = isCleanExit ? "idle" : "errored";
+        const taskStatus = isCleanExit ? "completed" : "errored";
 
-        // Auto-complete in_progress tasks if agent didn't send a completion ping.
-        // This prevents tasks from being stuck when the model fails to curl.
+        db.updateAgentStatus(opts.agentId, agentStatus);
+
+        if (!isCleanExit) {
+          db.createAuditEvent({
+            team_id: opts.teamId || null,
+            agent_id: opts.agentId,
+            event_type: "agent_errored",
+            event_data: JSON.stringify({
+              exit_code: code,
+              agent_name: opts.role || "Agent",
+            }),
+          });
+        }
+
+        // Auto-complete/error orphaned tasks when agent exits.
+        // This prevents tasks from being stuck when the model fails to curl
+        // or when the process is killed.
         if (opts.teamId) {
           const tasks = db.getTasksByTeam(opts.teamId);
           const orphanedTasks = tasks.filter(
@@ -369,7 +385,7 @@ function runClaudeProcess(opts: {
               if (t.assigned_agent_id !== opts.agentId) return false;
               if (t.status === "in_progress") return true;
               // Also auto-complete "review" tasks if all their child tasks are done
-              if (t.status === "review") {
+              if (t.status === "review" && isCleanExit) {
                 const childTasks = tasks.filter(
                   (ct: { parent_task_id: string | null }) => ct.parent_task_id === t.id
                 );
@@ -382,17 +398,19 @@ function runClaudeProcess(opts: {
             }
           );
           for (const task of orphanedTasks) {
-            db.updateTaskStatus(task.id, "completed");
+            db.updateTaskStatus(task.id, taskStatus);
             db.createAuditEvent({
               team_id: opts.teamId,
               agent_id: opts.agentId,
-              event_type: "task_completed",
+              event_type: isCleanExit ? "task_completed" : "task_errored",
               event_data: JSON.stringify({
                 task_id: task.id,
                 title: task.title,
                 agent_name: opts.role || "Agent",
                 auto_completed: true,
-                reason: "Agent process exited without sending completion ping",
+                reason: isCleanExit
+                  ? "Agent process exited without sending completion ping"
+                  : `Agent process crashed with exit code ${code}`,
               }),
             });
 
@@ -404,8 +422,9 @@ function runClaudeProcess(opts: {
               if (parentTask?.assigned_agent_id) {
                 const parentAgent = db.getAgent(parentTask.assigned_agent_id);
                 if (parentAgent?.tmux_session) {
-                  const msg = `[AGENT PING] COMPLETED by ${opts.role || "Agent"}: ${task.title}\nTask ID: ${task.id}\nNote: Auto-completed on process exit. Check inbox for output files.`;
-                  // Use async sendInput but don't await in exit handler
+                  const msg = isCleanExit
+                    ? `[AGENT PING] COMPLETED by ${opts.role || "Agent"}: ${task.title}\nTask ID: ${task.id}\nNote: Auto-completed on process exit. Check inbox for output files.`
+                    : `[AGENT UPDATE] ERRORED: ${opts.role || "Agent"} crashed while working on: ${task.title}\nTask ID: ${task.id}\nExit code: ${code}`;
                   sendInput(parentAgent.tmux_session, msg).catch((err: Error) => {
                     console.error(`Failed to wake parent agent: ${err.message}`);
                   });
