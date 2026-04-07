@@ -11,7 +11,7 @@
     "start": "next start",
     "lint": "next lint",
     "electron:compile": "tsc -p electron.tsconfig.json && node -e \"const fs=require('fs');const path=require('path');fs.copyFileSync('electron/splash.html','dist-electron/splash.html');fs.cpSync('electron/assets','dist-electron/assets',{recursive:true})\"",
-    "electron:dev": "concurrently -k \"next dev\" \"wait-on http://localhost:3000 && pnpm electron:compile && electron .\"",
+    "electron:dev": "concurrently -k \"next dev\" \"wait-on http://localhost:3000 && pnpm electron:compile && electronmon .\" \"pnpm exec tsc -p electron.tsconfig.json --watch\"",
     "electron:build": "pnpm build && pnpm electron:compile && electron-builder --win",
     "electron:preview": "pnpm build && pnpm electron:compile && electron ."
   },
@@ -37,6 +37,7 @@
     "concurrently": "^9.2.1",
     "electron": "^41.1.1",
     "electron-builder": "^26.8.1",
+    "electronmon": "^2.0.4",
     "eslint": "^10.2.0",
     "eslint-config-next": "^16.2.2",
     "postcss": "^8.5.8",
