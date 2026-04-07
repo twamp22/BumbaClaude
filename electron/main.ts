@@ -2,8 +2,10 @@ import { app, BrowserWindow, ipcMain, dialog } from "electron";
 import path from "path";
 import { startServer, stopServer, onServerExit, connectToDevServer } from "./server";
 import { loadConfig, saveConfig } from "./config";
+import { createTray, destroyTray } from "./tray";
 
 let mainWindow: BrowserWindow | null = null;
+let forceQuit = false;
 
 // Single instance lock
 const gotTheLock = app.requestSingleInstanceLock();
@@ -144,6 +146,15 @@ async function bootstrap(): Promise<void> {
     }
 
     mainWindow = createMainWindow(port);
+    createTray(mainWindow);
+
+    mainWindow.on("close", (event) => {
+      const config = loadConfig();
+      if (config.closeToTray && !forceQuit) {
+        event.preventDefault();
+        mainWindow!.hide();
+      }
+    });
 
     mainWindow.once("ready-to-show", () => {
       splash.destroy();
@@ -176,10 +187,17 @@ app.whenReady().then(() => {
 });
 
 app.on("window-all-closed", () => {
-  stopServer();
-  app.quit();
+  if (!loadConfig().closeToTray) {
+    stopServer();
+    app.quit();
+  }
 });
 
 app.on("before-quit", () => {
+  forceQuit = true;
   stopServer();
+});
+
+app.on("will-quit", () => {
+  destroyTray();
 });
