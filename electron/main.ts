@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, dialog, globalShortcut } from "electron";
 import path from "path";
 import { startServer, stopServer, onServerExit, connectToDevServer, getServerPort } from "./server";
 import { loadConfig, saveConfig } from "./config";
-import { createTray, destroyTray } from "./tray";
+import { createTray, destroyTray, updateTrayStatus } from "./tray";
 import { sendNotification } from "./notifications";
 import { initAutoUpdater, downloadUpdate, installUpdate } from "./updater";
 
@@ -183,6 +183,42 @@ async function bootstrap(): Promise<void> {
     mainWindow = createMainWindow(port);
     createTray(mainWindow);
     initAutoUpdater(mainWindow);
+
+    // Poll agent status to update tray icon
+    const pollAgentStatus = async (): Promise<void> => {
+      try {
+        const port = getServerPort();
+        if (port === 0) return;
+        const response = await fetch(`http://localhost:${port}/api/teams`);
+        const teams = await response.json();
+
+        if (!Array.isArray(teams) || !mainWindow) return;
+
+        const activeTeams = teams.filter(
+          (t: { status: string }) => t.status === "running" || t.status === "active"
+        );
+        const erroredTeams = teams.filter(
+          (t: { status: string }) => t.status === "errored"
+        );
+        const waitingTeams = teams.filter(
+          (t: { status: string }) => t.status === "waiting" || t.status === "idle"
+        );
+
+        let status: "green" | "amber" | "red" = "green";
+        if (erroredTeams.length > 0) {
+          status = "red";
+        } else if (waitingTeams.length > 0) {
+          status = "amber";
+        }
+
+        updateTrayStatus(status, activeTeams.length, mainWindow);
+      } catch {
+        // Server not reachable, keep current status
+      }
+    };
+
+    setInterval(pollAgentStatus, 10000);
+    pollAgentStatus();
 
     // Global shortcut to toggle window visibility
     const config = loadConfig();
