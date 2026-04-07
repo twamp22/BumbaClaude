@@ -43,3 +43,6 @@ pnpm-debug.log*
 
 # turbo
 .turbo/
+
+# worktrees
+.worktrees/
