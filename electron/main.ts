@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain, dialog, globalShortcut } from "electron";
 import path from "path";
-import { startServer, stopServer, onServerExit, connectToDevServer, getServerPort } from "./server";
+import { startServer, stopServer, onServerExit, connectToDevServer, getServerPort, restartServer } from "./server";
 import { loadConfig, saveConfig } from "./config";
 import { createTray, destroyTray, updateTrayStatus } from "./tray";
 import { sendNotification } from "./notifications";
@@ -258,13 +258,42 @@ async function bootstrap(): Promise<void> {
     });
 
     if (!isDev) {
-      onServerExit((code) => {
+      onServerExit(async (code) => {
         if (code !== null && code !== 0 && mainWindow && !mainWindow.isDestroyed()) {
-          dialog.showErrorBox(
-            "Server Crashed",
-            "The BumbaClaude server has stopped unexpectedly. The application will close."
-          );
-          app.quit();
+          const { response: buttonIndex } = await dialog.showMessageBox(mainWindow, {
+            type: "error",
+            buttons: ["Quit", "Restart Server"],
+            defaultId: 1,
+            title: "Server Crashed",
+            message: "The BumbaClaude server has stopped unexpectedly.",
+            detail: "You can restart the server or quit the application.",
+          });
+
+          if (buttonIndex === 1) {
+            try {
+              const appPath = getAppPath();
+              const newPort = await restartServer(appPath);
+              mainWindow.loadURL(`http://localhost:${newPort}`);
+
+              onServerExit(async (restartCode) => {
+                if (restartCode !== null && restartCode !== 0 && mainWindow && !mainWindow.isDestroyed()) {
+                  dialog.showErrorBox(
+                    "Server Crashed Again",
+                    "The server crashed again after restart. The application will close."
+                  );
+                  app.quit();
+                }
+              });
+            } catch (err) {
+              dialog.showErrorBox(
+                "Restart Failed",
+                `Failed to restart server:\n${err instanceof Error ? err.message : String(err)}`
+              );
+              app.quit();
+            }
+          } else {
+            app.quit();
+          }
         }
       });
     }

@@ -87,6 +87,11 @@ export function onServerExit(callback: (code: number | null) => void): void {
   }
 }
 
+export async function restartServer(appPath: string): Promise<number> {
+  stopServer();
+  return startServer(appPath);
+}
+
 export async function connectToDevServer(port: number): Promise<number> {
   serverPort = port;
   await waitForServer(port);
