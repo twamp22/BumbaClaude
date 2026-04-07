@@ -39,6 +39,14 @@ export function initAutoUpdater(win: BrowserWindow): void {
   autoUpdater.checkForUpdates().catch((err) => {
     console.error("Update check failed:", err);
   });
+
+  // Check for updates every 4 hours
+  const UPDATE_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
+  setInterval(() => {
+    autoUpdater.checkForUpdates().catch((err) => {
+      console.error("Periodic update check failed:", err);
+    });
+  }, UPDATE_CHECK_INTERVAL_MS);
 }
 
 export function downloadUpdate(): void {
