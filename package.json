@@ -4,6 +4,7 @@
   "private": true,
   "main": "dist-electron/main.js",
   "description": "First-party compatible dashboard for Claude Code multi-agent orchestration",
+  "build": "electron-builder.config.js",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
