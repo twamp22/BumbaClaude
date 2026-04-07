@@ -1,9 +1,10 @@
-import { app, BrowserWindow, ipcMain, dialog } from "electron";
+import { app, BrowserWindow, ipcMain, dialog, globalShortcut } from "electron";
 import path from "path";
-import { startServer, stopServer, onServerExit, connectToDevServer } from "./server";
+import { startServer, stopServer, onServerExit, connectToDevServer, getServerPort } from "./server";
 import { loadConfig, saveConfig } from "./config";
 import { createTray, destroyTray } from "./tray";
 import { sendNotification } from "./notifications";
+import { initAutoUpdater, downloadUpdate, installUpdate } from "./updater";
 
 let mainWindow: BrowserWindow | null = null;
 let forceQuit = false;
@@ -136,6 +137,28 @@ function registerIpcHandlers(): void {
       mainWindow
     );
   });
+
+  // Auto-update
+  ipcMain.handle("update:download", () => {
+    downloadUpdate();
+  });
+
+  ipcMain.handle("update:install", () => {
+    installUpdate();
+  });
+
+  // Launch on startup
+  ipcMain.handle("app:setLoginItemSettings", (_event, openAtLogin: boolean) => {
+    app.setLoginItemSettings({
+      openAtLogin,
+      openAsHidden: true,
+    });
+    saveConfig({ launchOnStartup: openAtLogin });
+  });
+
+  ipcMain.handle("app:getLoginItemSettings", () => {
+    return app.getLoginItemSettings();
+  });
 }
 
 async function bootstrap(): Promise<void> {
@@ -155,6 +178,32 @@ async function bootstrap(): Promise<void> {
 
     mainWindow = createMainWindow(port);
     createTray(mainWindow);
+    initAutoUpdater(mainWindow);
+
+    // Global shortcut to toggle window visibility
+    const config = loadConfig();
+    const shortcut = config.globalShortcut || "Ctrl+Shift+B";
+    const registered = globalShortcut.register(shortcut, () => {
+      if (!mainWindow) return;
+      if (mainWindow.isVisible() && mainWindow.isFocused()) {
+        mainWindow.hide();
+      } else {
+        mainWindow.show();
+        mainWindow.focus();
+      }
+    });
+    if (!registered) {
+      console.error(`Failed to register global shortcut: ${shortcut}`);
+    }
+
+    // Apply launch-on-startup setting
+    const startupConfig = loadConfig();
+    if (startupConfig.launchOnStartup) {
+      app.setLoginItemSettings({
+        openAtLogin: true,
+        openAsHidden: true,
+      });
+    }
 
     mainWindow.on("close", (event) => {
       const config = loadConfig();
@@ -201,11 +250,44 @@ app.on("window-all-closed", () => {
   }
 });
 
-app.on("before-quit", () => {
+app.on("before-quit", async (event) => {
+  if (forceQuit) {
+    stopServer();
+    return;
+  }
+
+  event.preventDefault();
+
+  try {
+    const port = getServerPort();
+    const response = await fetch(`http://localhost:${port}/api/teams`);
+    const teams = await response.json();
+
+    const activeTeams = Array.isArray(teams)
+      ? teams.filter((t: { status: string }) => t.status === "running" || t.status === "active")
+      : [];
+
+    if (activeTeams.length > 0) {
+      const { response: buttonIndex } = await dialog.showMessageBox(mainWindow!, {
+        type: "question",
+        buttons: ["Cancel", "Quit Anyway"],
+        defaultId: 0,
+        cancelId: 0,
+        title: "Agents Still Running",
+        message: `${activeTeams.length} team(s) have active agents. Quit anyway?\n\nAgents will keep running in their tmux sessions.`,
+      });
+
+      if (buttonIndex === 0) return;
+    }
+  } catch {
+    // If we can't reach the server, just quit
+  }
+
   forceQuit = true;
-  stopServer();
+  app.quit();
 });
 
 app.on("will-quit", () => {
+  globalShortcut.unregisterAll();
   destroyTray();
 });
