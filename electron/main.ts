@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog } from "electron";
 import path from "path";
 import { startServer, stopServer, onServerExit, connectToDevServer } from "./server";
+import { loadConfig, saveConfig } from "./config";
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -43,9 +44,14 @@ function createSplashWindow(): BrowserWindow {
 }
 
 function createMainWindow(port: number): BrowserWindow {
+  const config = loadConfig();
+  const { windowBounds } = config;
+
   const win = new BrowserWindow({
-    width: 1400,
-    height: 900,
+    width: windowBounds.width,
+    height: windowBounds.height,
+    x: windowBounds.x,
+    y: windowBounds.y,
     minWidth: 900,
     minHeight: 600,
     backgroundColor: "#09090b",
@@ -57,10 +63,51 @@ function createMainWindow(port: number): BrowserWindow {
     },
   });
 
+  if (windowBounds.isMaximized) {
+    win.maximize();
+  }
+
   win.loadURL(`http://localhost:${port}`);
 
   win.once("ready-to-show", () => {
     win.show();
+  });
+
+  // Persist window bounds on changes
+  const saveBounds = (): void => {
+    if (win.isMaximized()) return;
+    const bounds = win.getBounds();
+    saveConfig({
+      windowBounds: {
+        x: bounds.x,
+        y: bounds.y,
+        width: bounds.width,
+        height: bounds.height,
+        isMaximized: false,
+      },
+    });
+  };
+
+  win.on("resize", saveBounds);
+  win.on("move", saveBounds);
+
+  win.on("maximize", () => {
+    saveConfig({
+      windowBounds: { ...loadConfig().windowBounds, isMaximized: true },
+    });
+  });
+
+  win.on("unmaximize", () => {
+    const bounds = win.getBounds();
+    saveConfig({
+      windowBounds: {
+        x: bounds.x,
+        y: bounds.y,
+        width: bounds.width,
+        height: bounds.height,
+        isMaximized: false,
+      },
+    });
   });
 
   return win;
