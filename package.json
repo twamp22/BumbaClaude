@@ -2,7 +2,7 @@
   "name": "bumba-claude",
   "version": "0.1.0",
   "private": true,
-  "description": "Mission control for Claude Code multi-agent workflows",
+  "description": "First-party compatible dashboard for Claude Code multi-agent orchestration",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

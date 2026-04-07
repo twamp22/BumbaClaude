@@ -271,10 +271,17 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="inline-block mb-6 px-3 py-1 rounded-full border border-green-500/20 bg-green-500/5">
-            <span className="text-xs font-mono text-green-400">
-              v0.1.0 -- Open Source (MIT)
-            </span>
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <div className="inline-block px-3 py-1 rounded-full border border-green-500/20 bg-green-500/5">
+              <span className="text-xs font-mono text-green-400">
+                v0.1.0 -- Open Source (MIT)
+              </span>
+            </div>
+            <div className="inline-block px-3 py-1 rounded-full border border-green-500/20 bg-green-500/5">
+              <span className="text-xs font-mono text-green-400">
+                First-party compatible
+              </span>
+            </div>
           </div>
 
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold font-mono tracking-tight mb-6">
@@ -397,8 +404,52 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* How it works */}
+      {/* The BumbaClaude Way */}
       <section className="relative z-10 px-6 md:px-12 py-20 bg-zinc-900/20">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl md:text-4xl font-bold font-mono mb-4">
+              The BumbaClaude Way
+            </h2>
+            <p className="text-zinc-400 max-w-xl mx-auto">
+              Built on principles that keep your workflow on solid ground.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="group relative bg-zinc-900/60 border border-green-500/20 rounded-xl p-6 hover:border-green-500/40 transition-all duration-300 hover:shadow-[0_0_30px_rgba(34,197,94,0.05)]">
+              <div className="text-3xl mb-4 font-mono text-green-400">[ok]</div>
+              <h3 className="text-lg font-bold font-mono text-zinc-100 mb-2">
+                First-Party Compatible
+              </h3>
+              <p className="text-sm text-zinc-400 leading-relaxed">
+                Uses the official CLI, reads official filesystem state, supports the official Agent SDK. No special access required.
+              </p>
+            </div>
+            <div className="group relative bg-zinc-900/60 border border-green-500/20 rounded-xl p-6 hover:border-green-500/40 transition-all duration-300 hover:shadow-[0_0_30px_rgba(34,197,94,0.05)]">
+              <div className="text-3xl mb-4 font-mono text-green-400">[--]</div>
+              <h3 className="text-lg font-bold font-mono text-zinc-100 mb-2">
+                No Tricks, No Hacks
+              </h3>
+              <p className="text-sm text-zinc-400 leading-relaxed">
+                No spoofed tokens, no header manipulation, no OAuth hijacking. Just clean orchestration through official interfaces.
+              </p>
+            </div>
+            <div className="group relative bg-zinc-900/60 border border-green-500/20 rounded-xl p-6 hover:border-green-500/40 transition-all duration-300 hover:shadow-[0_0_30px_rgba(34,197,94,0.05)]">
+              <div className="text-3xl mb-4 font-mono text-green-400">[$$]</div>
+              <h3 className="text-lg font-bold font-mono text-zinc-100 mb-2">
+                Your Access, Your Choice
+              </h3>
+              <p className="text-sm text-zinc-400 leading-relaxed">
+                Works with subscriptions. Works with API keys. Your billing, your decision. BumbaClaude orchestrates whatever you've got.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="relative z-10 px-6 md:px-12 py-20">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-14">
             <h2 className="text-3xl md:text-4xl font-bold font-mono mb-4">
@@ -557,15 +608,15 @@ export default function LandingPage() {
       <section className="relative z-10 px-6 md:px-12 py-24">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-3xl md:text-5xl font-bold font-mono mb-6">
-            Your AI agents deserve
+            Orchestrate freely.
             <br />
             <span className="bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent">
-              a control room
+              Orchestrate right.
             </span>
           </h2>
           <p className="text-zinc-400 mb-10 text-lg">
-            Open source. MIT licensed. Built for developers who run multi-agent
-            Claude Code workflows.
+            First-party compatible. Open source. Built for developers who do
+            things the right way.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <a

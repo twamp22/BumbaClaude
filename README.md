@@ -5,13 +5,14 @@
 <h1 align="center">BumbaClaude</h1>
 
 <p align="center">
-  <strong>Mission control for Claude Code multi-agent workflows</strong>
+  <strong>The right way to orchestrate Claude Code</strong>
 </p>
 
 <p align="center">
   <a href="https://github.com/twamp22/BumbaClaude/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT License" /></a>
   <a href="https://github.com/twamp22/BumbaClaude/releases"><img src="https://img.shields.io/badge/version-0.1.0-blue.svg" alt="Version" /></a>
   <a href="https://github.com/twamp22/BumbaClaude/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" /></a>
+  <img src="https://img.shields.io/badge/first--party-compatible-green.svg" alt="First-Party Compatible" />
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20(WSL)-lightgrey.svg" alt="Platform" />
 </p>
 
@@ -32,6 +33,28 @@ pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000). That's it.
+
+---
+
+## Why BumbaClaude
+
+**The wrapper principle.** BumbaClaude never touches Claude Code internals. It sits entirely outside and communicates through three official interfaces: tmux sessions, filesystem state, and the Agent SDK.
+
+**First-party compatible.** Every interface BumbaClaude uses is one that Claude Code exposes to all users. No special access. No hidden tricks. No loopholes that break when the next update ships.
+
+**Your access, your choice.** BumbaClaude works with subscriptions and API keys alike. Your billing model is your decision.
+
+Read the full philosophy: [PHILOSOPHY.md](./PHILOSOPHY.md)
+
+## What BumbaClaude does NOT do
+
+- Does not spoof client headers or OAuth tokens
+- Does not bypass rate limits or usage metering
+- Does not modify Claude Code's source, binary, or config
+- Does not require special API access or workarounds
+- Does not lock you into any specific billing model
+
+---
 
 ### Prerequisites
 

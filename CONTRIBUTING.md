@@ -1,5 +1,7 @@
 # Contributing to BumbaClaude
 
+> Before contributing, please read our [Philosophy](./PHILOSOPHY.md) to understand the principles that guide this project.
+
 Thanks for your interest in contributing. BumbaClaude is early-stage and moving fast, so contributions of all kinds are valuable.
 
 ## Ways to contribute
@@ -46,6 +48,9 @@ BumbaClaude is a wrapper around Claude Code, not a modification of it. This is a
 - **NEVER** patch or modify Claude Code's source or binary
 - All interaction happens through tmux commands, filesystem reads, or the Agent SDK
 - If a feature requires modifying Claude Code internals, it's out of scope
+- **NEVER** spoof client headers or user agent strings
+- **NEVER** use subscription OAuth tokens programmatically
+- **NEVER** bypass or circumvent usage metering
 
 ## Issues and discussions
 
