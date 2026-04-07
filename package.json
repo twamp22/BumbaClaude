@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "electron:compile": "tsc -p electron.tsconfig.json && node -e \"require('fs').copyFileSync('electron/splash.html','dist-electron/splash.html')\"",
+    "electron:compile": "tsc -p electron.tsconfig.json && node -e \"const fs=require('fs');const path=require('path');fs.copyFileSync('electron/splash.html','dist-electron/splash.html');fs.cpSync('electron/assets','dist-electron/assets',{recursive:true})\"",
     "electron:dev": "concurrently -k \"next dev\" \"wait-on http://localhost:3000 && pnpm electron:compile && electron .\"",
     "electron:build": "pnpm build && pnpm electron:compile && electron-builder --win",
     "electron:preview": "pnpm build && pnpm electron:compile && electron ."

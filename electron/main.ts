@@ -77,19 +77,23 @@ function createMainWindow(port: number): BrowserWindow {
     win.show();
   });
 
-  // Persist window bounds on changes
+  // Persist window bounds on changes (debounced to avoid excessive disk writes)
+  let saveBoundsTimer: ReturnType<typeof setTimeout> | null = null;
   const saveBounds = (): void => {
     if (win.isMaximized()) return;
-    const bounds = win.getBounds();
-    saveConfig({
-      windowBounds: {
-        x: bounds.x,
-        y: bounds.y,
-        width: bounds.width,
-        height: bounds.height,
-        isMaximized: false,
-      },
-    });
+    if (saveBoundsTimer) clearTimeout(saveBoundsTimer);
+    saveBoundsTimer = setTimeout(() => {
+      const bounds = win.getBounds();
+      saveConfig({
+        windowBounds: {
+          x: bounds.x,
+          y: bounds.y,
+          width: bounds.width,
+          height: bounds.height,
+          isMaximized: false,
+        },
+      });
+    }, 500);
   };
 
   win.on("resize", saveBounds);
@@ -245,7 +249,6 @@ app.whenReady().then(() => {
 
 app.on("window-all-closed", () => {
   if (!loadConfig().closeToTray) {
-    stopServer();
     app.quit();
   }
 });

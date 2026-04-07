@@ -8,7 +8,7 @@ let currentStatus: TrayStatus = "green";
 let activeTeamCount: number = 0;
 
 function getIconPath(status: TrayStatus): string {
-  return path.join(__dirname, "..", "electron", "assets", `tray-${status}.png`);
+  return path.join(__dirname, "assets", `tray-${status}.png`);
 }
 
 function buildContextMenu(mainWindow: BrowserWindow | null): Menu {

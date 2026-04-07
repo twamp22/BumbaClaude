@@ -47,8 +47,13 @@ export function loadConfig(): AppConfig {
   try {
     if (fs.existsSync(CONFIG_PATH)) {
       const raw = fs.readFileSync(CONFIG_PATH, "utf-8");
-      const parsed = JSON.parse(raw) as Partial<AppConfig>;
-      const merged: AppConfig = { ...DEFAULT_CONFIG, ...parsed };
+      const parsed = JSON.parse(raw);
+      const merged: AppConfig = {
+        ...DEFAULT_CONFIG,
+        ...parsed,
+        windowBounds: { ...DEFAULT_CONFIG.windowBounds, ...parsed.windowBounds },
+        notifications: { ...DEFAULT_CONFIG.notifications, ...parsed.notifications },
+      };
       cachedConfig = merged;
       return merged;
     }
@@ -61,7 +66,16 @@ export function loadConfig(): AppConfig {
 
 export function saveConfig(config: Partial<AppConfig>): void {
   const current = loadConfig();
-  const merged = { ...current, ...config };
+  const merged: AppConfig = {
+    ...current,
+    ...config,
+    windowBounds: config.windowBounds
+      ? { ...current.windowBounds, ...config.windowBounds }
+      : current.windowBounds,
+    notifications: config.notifications
+      ? { ...current.notifications, ...config.notifications }
+      : current.notifications,
+  };
   cachedConfig = merged;
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(merged, null, 2), "utf-8");
 }
