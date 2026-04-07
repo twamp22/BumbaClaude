@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { WizardState } from "@/app/teams/new/page";
+import type { WizardState } from "@/app/(dashboard)/teams/new/page";
 
 interface ProjectStepProps {
   state: WizardState;

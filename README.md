@@ -1,29 +1,28 @@
-# BumbaClaude
+<p align="center">
+  <img src="public/logo.png" alt="BumbaClaude - Mission Control for Claude Code" width="300" />
+</p>
 
-Mission control for Claude Code multi-agent workflows.
+<h1 align="center">BumbaClaude</h1>
 
-BumbaClaude is a standalone web dashboard that manages multi-agent Claude Code orchestration without modifying Claude Code itself. Define agent teams, launch them, watch them work, intervene when they go sideways, and keep an audit trail of everything.
+<p align="center">
+  <strong>Mission control for Claude Code multi-agent workflows</strong>
+</p>
 
-## What it does
+<p align="center">
+  <a href="https://github.com/twamp22/BumbaClaude/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT License" /></a>
+  <a href="https://github.com/twamp22/BumbaClaude/releases"><img src="https://img.shields.io/badge/version-0.1.0-blue.svg" alt="Version" /></a>
+  <a href="https://github.com/twamp22/BumbaClaude/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" /></a>
+  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20(WSL)-lightgrey.svg" alt="Platform" />
+</p>
 
-- **Define teams:** Create reusable agent team configurations with custom roles, model tiers, and governance rules
-- **Launch workflows:** Spin up multi-agent Claude Code sessions from the dashboard with one click
-- **Monitor live:** Watch each agent's terminal output in real time, see task progress, and send messages to individual agents
-- **Enforce governance:** Set permission boundaries before agents spawn -- control file creation, shell access, git pushes, and turn limits
-- **Audit everything:** Full event log of agent activity with timestamps, filterable by agent and event type
-- **Save templates:** Package team configurations as reusable workflow templates, export and share as JSON
+<p align="center">
+  Define agent teams. Launch them. Watch them work. Intervene when they go sideways.<br/>
+  Full audit trail of everything. Zero modifications to Claude Code.
+</p>
 
-## How it works
+---
 
-BumbaClaude sits completely outside Claude Code. It talks to Claude Code through three public interfaces:
-
-1. **tmux sessions** -- spawns, monitors, and controls Claude Code processes
-2. **Filesystem state** -- reads the JSON mailbox and task files Claude Code writes to `~/.claude/`
-3. **Agent SDK** (optional, v0.2) -- programmatic agent control via the official API
-
-No forks. No patches. No modifications to Claude Code's source or binary.
-
-## Quick start
+## Quick Start
 
 ```bash
 git clone https://github.com/twamp22/BumbaClaude.git
@@ -32,46 +31,96 @@ pnpm install
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000). That's it.
 
 ### Prerequisites
 
-- Node.js 18+
-- pnpm
-- tmux installed and available in PATH
-- Claude Code installed (`claude` command available)
-- Claude Max subscription or API key
+| Requirement | Why |
+|---|---|
+| Node.js 18+ | Runtime |
+| pnpm | Package manager |
+| tmux | Agent session management |
+| Claude Code CLI | The `claude` command |
+| Claude Max or API key | LLM access |
 
-## Tech stack
+---
 
-- Next.js 16+ (App Router, TypeScript)
-- Tailwind CSS (dark mode primary)
-- SQLite via better-sqlite3 (local, zero config)
-- WebSocket for live agent status streaming
-- chokidar for filesystem monitoring
+## Features
 
-## Project status
+### Define Teams
+Create reusable agent team configurations with custom roles, model tiers, and governance rules. Set up a frontend team, a backend team, a QA team -- each with their own permissions and boundaries.
 
-BumbaClaude is in early development. The MVP targets the core loop: define a team, spawn agents, monitor progress, intervene when needed, review the audit trail.
+### Launch Workflows
+Spin up multi-agent Claude Code sessions from the dashboard with one click. Each agent runs in its own tmux session, fully isolated and independently controllable.
 
-See [MVP_SPEC.md](./MVP_SPEC.md) for the full specification.
+### Monitor Live
+Watch each agent's terminal output in real time. See task progress across all agents at a glance. Send messages to individual agents when they need course correction.
 
-### Roadmap
+### Enforce Governance
+Set permission boundaries before agents spawn. Control file creation, shell access, git pushes, and turn limits. Agents can't exceed the boundaries you define.
 
-- **v0.1** -- Dashboard home, team creation wizard, live monitor, task list, audit log, workflow templates
-- **v0.2** -- Agent SDK integration, granular permissions, token tracking, template sharing
-- **v0.3** -- Kanban board, context visualization, workflow replay, webhook notifications
-- **v0.4** -- Plugin system, public template registry, GitHub Actions integration
+### Audit Everything
+Full event log of agent activity with timestamps, filterable by agent and event type. Know exactly what happened, when, and why.
+
+### Save Templates
+Package team configurations as reusable workflow templates. Export and share as JSON. Build a library of proven multi-agent patterns.
+
+---
+
+## How It Works
+
+BumbaClaude is a **wrapper**, not a fork. It sits completely outside Claude Code and talks to it through three public interfaces:
+
+```
++------------------+       tmux        +------------------+
+|                  | ----------------> |                  |
+|   BumbaClaude    |    filesystem     |   Claude Code    |
+|   (dashboard)    | <---------------- |   (agents)       |
+|                  |    Agent SDK      |                  |
++------------------+ ----------------> +------------------+
+```
+
+1. **tmux sessions** -- spawns, monitors, and controls Claude Code processes
+2. **Filesystem state** -- reads JSON mailbox and task files from `~/.claude/`
+3. **Agent SDK** (optional, v0.2+) -- programmatic agent control via the official API
+
+No forks. No patches. No modifications to Claude Code's source or binary.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16+ (App Router, TypeScript) |
+| Styling | Tailwind CSS (dark mode primary) |
+| Database | SQLite via better-sqlite3 |
+| Real-time | WebSocket (ws) |
+| File watching | chokidar |
+| Session mgmt | tmux via child_process |
+
+---
+
+## Roadmap
+
+| Version | Focus |
+|---|---|
+| **v0.1** (current) | Dashboard, team wizard, live monitor, task list, audit log, templates |
+| **v0.2** | Agent SDK integration, granular permissions, token tracking, template sharing |
+| **v0.3** | Kanban board, context visualization, workflow replay, webhook notifications |
+| **v0.4** | Plugin system, public template registry, GitHub Actions integration |
+
+---
 
 ## Contributing
 
-BumbaClaude is open source and contributions are welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+Contributions are welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
-Whether it's a bug report, feature idea, documentation improvement, or code contribution -- all of it helps.
+Bug reports, feature ideas, documentation improvements, and code contributions all help.
 
 ## License
 
-MIT. See [LICENSE](./LICENSE) for the full text.
+MIT. See [LICENSE](./LICENSE).
 
 ## Author
 

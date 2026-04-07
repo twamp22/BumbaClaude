@@ -1,6 +1,6 @@
 "use client";
 
-import type { WizardState, WizardGovernance } from "@/app/teams/new/page";
+import type { WizardState, WizardGovernance } from "@/app/(dashboard)/teams/new/page";
 
 interface GovernanceStepProps {
   state: WizardState;

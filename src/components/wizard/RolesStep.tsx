@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { WizardState, WizardAgent } from "@/app/teams/new/page";
+import type { WizardState, WizardAgent } from "@/app/(dashboard)/teams/new/page";
 import type { Template, TemplateConfig } from "@/lib/types";
 
 interface RolesStepProps {
