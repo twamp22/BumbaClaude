@@ -3,6 +3,7 @@ import path from "path";
 import { startServer, stopServer, onServerExit, connectToDevServer } from "./server";
 import { loadConfig, saveConfig } from "./config";
 import { createTray, destroyTray } from "./tray";
+import { sendNotification } from "./notifications";
 
 let mainWindow: BrowserWindow | null = null;
 let forceQuit = false;
@@ -127,6 +128,13 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle("app:getVersion", () => {
     return app.getVersion();
+  });
+
+  ipcMain.handle("notification:send", (_event, title: string, body: string, route?: string) => {
+    sendNotification(
+      { type: "agentCompleted", title, body, route },
+      mainWindow
+    );
   });
 }
 
