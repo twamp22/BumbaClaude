@@ -1,3 +1,6 @@
+const fs = require("fs");
+const path = require("path");
+
 /** @type {import('electron-builder').Configuration} */
 module.exports = {
   appId: "com.bumbaclaude.app",
@@ -11,36 +14,69 @@ module.exports = {
 
   files: [
     "dist-electron/**/*",
-    "electron/splash.html",
     "electron/assets/**/*",
-    ".next/standalone/**/*",
-    ".next/static/**/*",
-    "public/**/*",
-    "db/**/*",
+    "!src",
+    "!docs",
+    "!db",
+    "!public",
+    "!.next",
+    "!.worktrees",
+  ],
+
+  asarUnpack: [
+    "dist-electron/**/*",
+    "electron/assets/**/*",
   ],
 
   extraResources: [
     {
-      from: ".next/standalone",
-      to: "app/.next/standalone",
-      filter: ["**/*"],
-    },
-    {
-      from: ".next/static",
-      to: "app/.next/static",
-      filter: ["**/*"],
-    },
-    {
-      from: "public",
-      to: "app/public",
-      filter: ["**/*"],
-    },
-    {
-      from: "db",
-      to: "app/db",
-      filter: ["**/*"],
+      from: "db/",
+      to: "db/",
     },
   ],
+
+  afterPack(context) {
+    // Copy standalone build to resources
+    const src = path.join(__dirname, "standalone-build");
+    const dest = path.join(context.appOutDir, "resources", "standalone");
+    fs.cpSync(src, dest, { recursive: true });
+
+    // electron-builder's @electron/rebuild recompiles better-sqlite3 for
+    // Electron's Node version, which corrupts our project copy. We need
+    // to rebuild it for system Node and patch the standalone copy.
+    const { execSync } = require("child_process");
+    console.log("  Rebuilding better-sqlite3 for system Node...");
+    execSync("pnpm rebuild better-sqlite3", { cwd: __dirname, stdio: "inherit" });
+
+    // Now copy the system Node-compiled binary over the standalone copies
+    const bs3Build = path.join(
+      fs.realpathSync(path.join(__dirname, "node_modules", "better-sqlite3")),
+      "build", "Release", "better_sqlite3.node"
+    );
+    if (fs.existsSync(bs3Build)) {
+      // Patch .next/node_modules/better-sqlite3-*/build/Release/
+      const nextNm = path.join(dest, ".next", "node_modules");
+      if (fs.existsSync(nextNm)) {
+        for (const dir of fs.readdirSync(nextNm).filter(d => d.startsWith("better-sqlite3"))) {
+          const targetDir = path.join(nextNm, dir, "build", "Release");
+          if (fs.existsSync(targetDir)) {
+            for (const f of fs.readdirSync(targetDir).filter(f => f.endsWith(".node"))) {
+              fs.copyFileSync(bs3Build, path.join(targetDir, f));
+              console.log(`  Patched ${dir}/build/Release/${f}`);
+            }
+          }
+        }
+      }
+      // Patch node_modules/better-sqlite3/build/Release/
+      const topBs3 = path.join(dest, "node_modules", "better-sqlite3", "build", "Release");
+      if (fs.existsSync(topBs3)) {
+        for (const f of fs.readdirSync(topBs3).filter(f => f.endsWith(".node"))) {
+          fs.copyFileSync(bs3Build, path.join(topBs3, f));
+          console.log(`  Patched node_modules/better-sqlite3/build/Release/${f}`);
+        }
+      }
+    }
+  },
 
   win: {
     target: [
@@ -59,7 +95,7 @@ module.exports = {
   nsis: {
     oneClick: false,
     allowToChangeInstallationDirectory: true,
-    createDesktopIcon: true,
+    createDesktopShortcut: true,
     createStartMenuShortcut: true,
     shortcutName: "BumbaClaude",
     installerIcon: "electron/assets/icon.ico",

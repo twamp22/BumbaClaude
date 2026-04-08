@@ -15,6 +15,11 @@ interface ElectronAPI {
   onUpdateDownloaded: (callback: () => void) => () => void;
   setOpenAtLogin: (enabled: boolean) => Promise<void>;
   getOpenAtLogin: () => Promise<{ openAtLogin: boolean }>;
+  windowMinimize: () => Promise<void>;
+  windowMaximize: () => Promise<void>;
+  windowClose: () => Promise<void>;
+  windowIsMaximized: () => Promise<boolean>;
+  onWindowMaximizeChange: (callback: (isMaximized: boolean) => void) => () => void;
 }
 
 declare global {
@@ -87,6 +92,34 @@ export function useElectron() {
     return window.electronAPI.getOpenAtLogin();
   }, []);
 
+  const windowMinimize = useCallback(async (): Promise<void> => {
+    if (!window.electronAPI) return;
+    return window.electronAPI.windowMinimize();
+  }, []);
+
+  const windowMaximize = useCallback(async (): Promise<void> => {
+    if (!window.electronAPI) return;
+    return window.electronAPI.windowMaximize();
+  }, []);
+
+  const windowClose = useCallback(async (): Promise<void> => {
+    if (!window.electronAPI) return;
+    return window.electronAPI.windowClose();
+  }, []);
+
+  const windowIsMaximized = useCallback(async (): Promise<boolean> => {
+    if (!window.electronAPI) return false;
+    return window.electronAPI.windowIsMaximized();
+  }, []);
+
+  const onWindowMaximizeChange = useCallback(
+    (callback: (isMaximized: boolean) => void): (() => void) => {
+      if (!window.electronAPI) return () => {};
+      return window.electronAPI.onWindowMaximizeChange(callback);
+    },
+    []
+  );
+
   return {
     isElectron,
     selectDirectory,
@@ -98,5 +131,10 @@ export function useElectron() {
     onUpdateDownloaded,
     setOpenAtLogin,
     getOpenAtLogin,
+    windowMinimize,
+    windowMaximize,
+    windowClose,
+    windowIsMaximized,
+    onWindowMaximizeChange,
   };
 }

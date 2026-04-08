@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, globalShortcut } from "electron";
+import { app, BrowserWindow, ipcMain, dialog, globalShortcut, Menu } from "electron";
 import path from "path";
 import { startServer, stopServer, onServerExit, connectToDevServer, getServerPort, restartServer } from "./server";
 import { loadConfig, saveConfig } from "./config";
@@ -22,9 +22,16 @@ if (!gotTheLock) {
   });
 }
 
+function getStandaloneDir(): string {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, "standalone");
+  }
+  return path.join(__dirname, "..", ".next", "standalone");
+}
+
 function getAppPath(): string {
   if (app.isPackaged) {
-    return path.join(process.resourcesPath, "app");
+    return path.join(process.resourcesPath);
   }
   return path.join(__dirname, "..");
 }
@@ -58,7 +65,10 @@ function createMainWindow(port: number): BrowserWindow {
     y: windowBounds.y,
     minWidth: 900,
     minHeight: 600,
+    frame: false,
+    titleBarStyle: "hidden",
     backgroundColor: "#09090b",
+    icon: path.join(__dirname, "assets", "icon.ico"),
     show: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -103,6 +113,7 @@ function createMainWindow(port: number): BrowserWindow {
     saveConfig({
       windowBounds: { ...loadConfig().windowBounds, isMaximized: true },
     });
+    win.webContents.send("window:maximizeChanged", true);
   });
 
   win.on("unmaximize", () => {
@@ -116,6 +127,7 @@ function createMainWindow(port: number): BrowserWindow {
         isMaximized: false,
       },
     });
+    win.webContents.send("window:maximizeChanged", false);
   });
 
   return win;
@@ -133,6 +145,27 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle("app:getVersion", () => {
     return app.getVersion();
+  });
+
+  // Window controls
+  ipcMain.handle("window:minimize", () => {
+    mainWindow?.minimize();
+  });
+
+  ipcMain.handle("window:maximize", () => {
+    if (mainWindow?.isMaximized()) {
+      mainWindow.unmaximize();
+    } else {
+      mainWindow?.maximize();
+    }
+  });
+
+  ipcMain.handle("window:close", () => {
+    mainWindow?.close();
+  });
+
+  ipcMain.handle("window:isMaximized", () => {
+    return mainWindow?.isMaximized() ?? false;
   });
 
   ipcMain.handle("notification:send", (_event, title: string, body: string, route?: string) => {
@@ -176,8 +209,8 @@ async function bootstrap(): Promise<void> {
       const devPort = parseInt(process.env.NEXT_DEV_PORT || "3000");
       port = await connectToDevServer(devPort);
     } else {
-      const appPath = getAppPath();
-      port = await startServer(appPath);
+      const standaloneDir = getStandaloneDir();
+      port = await startServer(standaloneDir);
     }
 
     mainWindow = createMainWindow(port);
@@ -271,8 +304,8 @@ async function bootstrap(): Promise<void> {
 
           if (buttonIndex === 1) {
             try {
-              const appPath = getAppPath();
-              const newPort = await restartServer(appPath);
+              const standaloneDir = getStandaloneDir();
+              const newPort = await restartServer(standaloneDir);
               mainWindow.loadURL(`http://localhost:${newPort}`);
 
               onServerExit(async (restartCode) => {
@@ -308,6 +341,7 @@ async function bootstrap(): Promise<void> {
 }
 
 app.whenReady().then(() => {
+  Menu.setApplicationMenu(null);
   registerIpcHandlers();
   bootstrap();
 });

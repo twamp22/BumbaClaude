@@ -7,14 +7,14 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-full">
       {/* Sidebar */}
       <aside className="w-56 bg-zinc-900 border-r border-zinc-800 flex flex-col flex-shrink-0">
         <div className="p-4 border-b border-zinc-800">
           <Link href="/" className="font-mono font-bold text-lg text-zinc-100 hover:text-white">
             BumbaClaude
           </Link>
-          <div className="text-xs text-zinc-600 font-mono mt-0.5">Mission Control</div>
+          <div className="text-xs text-zinc-600 font-mono mt-0.5">Agent Orchestration</div>
         </div>
 
         <div className="p-3">

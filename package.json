@@ -4,7 +4,6 @@
   "private": true,
   "main": "dist-electron/main.js",
   "description": "First-party compatible dashboard for Claude Code multi-agent orchestration",
-  "build": "electron-builder.config.js",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -12,7 +11,8 @@
     "lint": "next lint",
     "electron:compile": "tsc -p electron.tsconfig.json && node -e \"const fs=require('fs');const path=require('path');fs.copyFileSync('electron/splash.html','dist-electron/splash.html');fs.cpSync('electron/assets','dist-electron/assets',{recursive:true})\"",
     "electron:dev": "concurrently -k \"next dev\" \"wait-on http://localhost:3000 && pnpm electron:compile && electronmon .\" \"pnpm exec tsc -p electron.tsconfig.json --watch\"",
-    "electron:build": "pnpm build && pnpm electron:compile && electron-builder --win",
+    "electron:prepare": "node scripts/prepare-standalone.js",
+    "electron:build": "pnpm build && pnpm electron:compile && pnpm electron:prepare && electron-builder --config electron-builder.config.js --win",
     "electron:preview": "pnpm build && pnpm electron:compile && electron ."
   },
   "author": "Thomas Wright",

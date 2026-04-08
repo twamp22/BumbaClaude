@@ -43,6 +43,21 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return () => ipcRenderer.removeListener("update:downloaded", handler);
   },
 
+  // Window controls
+  windowMinimize: (): Promise<void> =>
+    ipcRenderer.invoke("window:minimize"),
+  windowMaximize: (): Promise<void> =>
+    ipcRenderer.invoke("window:maximize"),
+  windowClose: (): Promise<void> =>
+    ipcRenderer.invoke("window:close"),
+  windowIsMaximized: (): Promise<boolean> =>
+    ipcRenderer.invoke("window:isMaximized"),
+  onWindowMaximizeChange: (callback: (isMaximized: boolean) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, isMaximized: boolean) => callback(isMaximized);
+    ipcRenderer.on("window:maximizeChanged", handler);
+    return () => ipcRenderer.removeListener("window:maximizeChanged", handler);
+  },
+
   // Launch on startup
   setOpenAtLogin: (enabled: boolean): Promise<void> =>
     ipcRenderer.invoke("app:setLoginItemSettings", enabled),
