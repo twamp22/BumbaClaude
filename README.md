@@ -144,10 +144,10 @@ No forks. No patches. No modifications to Claude Code's source or binary.
 
 | Version | Focus | Status |
 |---|---|---|
-| **v0.1.0** | Dashboard, team wizard, live monitor, audit log, templates, Electron desktop app | **Released** |
-| **v0.2.0** | Agent SDK integration, granular permissions, token tracking, template sharing | Planned |
-| **v0.3.0** | Kanban board, context visualization, workflow replay, webhook notifications | Planned |
-| **v0.4.0** | Plugin system, public template registry, GitHub Actions integration | Planned |
+| **v0.1.0** | Dashboard, team wizard, live monitor, audit log, templates, token/tool tracking, MCP discovery, scheduled tasks, context files, Electron desktop app | **Released** |
+| **v0.2.0** | Agent SDK integration, per-agent permissions, Kanban task board, template sharing/registry | Planned |
+| **v0.3.0** | Workflow replay, webhook notifications, context graph visualization | Planned |
+| **v0.4.0** | Plugin system, GitHub Actions integration, cross-platform builds (macOS/Linux) | Planned |
 
 ---
 

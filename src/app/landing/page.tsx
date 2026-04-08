@@ -535,28 +535,28 @@ export default function LandingPage() {
                 label: "released",
                 title: "Foundation",
                 items:
-                  "Dashboard, team wizard, live monitor, task list, audit log, templates, Electron desktop app",
+                  "Dashboard, team wizard, live monitor, audit log, templates, token/tool tracking, MCP discovery, scheduled tasks, context files, Electron desktop app",
               },
               {
                 version: "v0.2.0",
                 label: "",
                 title: "Integration",
                 items:
-                  "Agent SDK integration, granular permissions, token tracking, template sharing",
+                  "Agent SDK integration, per-agent permissions, Kanban task board, template sharing/registry",
               },
               {
                 version: "v0.3.0",
                 label: "",
                 title: "Visualization",
                 items:
-                  "Kanban board, context visualization, workflow replay, webhook notifications",
+                  "Workflow replay, webhook notifications, context graph visualization",
               },
               {
                 version: "v0.4.0",
                 label: "",
                 title: "Ecosystem",
                 items:
-                  "Plugin system, public template registry, GitHub Actions integration",
+                  "Plugin system, GitHub Actions integration, cross-platform builds (macOS/Linux)",
               },
             ].map((milestone, index) => (
               <div
