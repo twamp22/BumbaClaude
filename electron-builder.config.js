@@ -21,6 +21,13 @@ module.exports = {
     "!public",
     "!.next",
     "!.worktrees",
+    "!release",
+    "!standalone-build",
+    "!data",
+    "!team_data",
+    "!scripts",
+    "!*.md",
+    "!pnpm-lock.yaml",
   ],
 
   asarUnpack: [
@@ -36,6 +43,19 @@ module.exports = {
   ],
 
   afterPack(context) {
+    // Strip unused Chrome locale files (keep only en-US)
+    const localesDir = path.join(context.appOutDir, "locales");
+    if (fs.existsSync(localesDir)) {
+      let removed = 0;
+      for (const file of fs.readdirSync(localesDir)) {
+        if (file !== "en-US.pak") {
+          fs.unlinkSync(path.join(localesDir, file));
+          removed++;
+        }
+      }
+      console.log(`  Stripped ${removed} unused locale files`);
+    }
+
     // Copy standalone build to resources
     const src = path.join(__dirname, "standalone-build");
     const dest = path.join(context.appOutDir, "resources", "standalone");

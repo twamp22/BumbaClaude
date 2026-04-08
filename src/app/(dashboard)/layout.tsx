@@ -11,10 +11,10 @@ export default function DashboardLayout({
       {/* Sidebar */}
       <aside className="w-56 bg-zinc-900 border-r border-zinc-800 flex flex-col flex-shrink-0">
         <div className="p-4 border-b border-zinc-800">
-          <Link href="/" className="font-mono font-bold text-lg text-zinc-100 hover:text-white">
-            BumbaClaude
-          </Link>
-          <div className="text-xs text-zinc-600 font-mono mt-0.5">Agent Orchestration</div>
+          <a href="/landing" className="block hover:opacity-80 transition-opacity">
+            <div className="font-mono font-bold text-lg text-zinc-100">BumbaClaude</div>
+            <div className="text-xs text-zinc-600 font-mono mt-0.5">Agent Orchestration</div>
+          </a>
         </div>
 
         <div className="p-3">
@@ -44,7 +44,7 @@ export default function DashboardLayout({
         </nav>
 
         <div className="p-3 border-t border-zinc-800 text-xs font-mono text-zinc-600">
-          v0.1.0
+          <a href="https://github.com/twamp22/BumbaClaude" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-400 transition-colors">v0.1.0</a>
         </div>
       </aside>
 

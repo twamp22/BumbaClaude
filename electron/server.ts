@@ -37,18 +37,38 @@ function findFreePort(): Promise<number> {
   });
 }
 
-async function waitForServer(port: number, timeoutMs: number = 30000): Promise<void> {
+async function waitForServer(port: number, timeoutMs: number = 60000): Promise<void> {
   const start = Date.now();
+
+  // Phase 1: Wait for the server to respond at all
   while (Date.now() - start < timeoutMs) {
     try {
       const response = await fetch(`http://localhost:${port}`);
-      if (response.ok || response.status === 404) return;
+      if (response.ok || response.status === 404) break;
     } catch {
       // Server not ready yet
     }
     await new Promise((resolve) => setTimeout(resolve, 300));
   }
-  throw new Error(`Server did not start within ${timeoutMs}ms`);
+
+  if (Date.now() - start >= timeoutMs) {
+    throw new Error(`Server did not start within ${timeoutMs}ms`);
+  }
+
+  // Phase 2: Wait for the API to be ready (database initialized)
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const response = await fetch(`http://localhost:${port}/api/teams`);
+      if (response.ok) return;
+    } catch {
+      // API not ready yet
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  // If API never became ready, still proceed -- the page will load
+  // and API calls will retry on the client side
+  console.error("Warning: API health check did not pass, proceeding anyway");
 }
 
 export async function startServer(standaloneDir: string): Promise<number> {
@@ -57,8 +77,8 @@ export async function startServer(standaloneDir: string): Promise<number> {
   const serverJs = path.join(standaloneDir, "server.js");
 
   const nodePath = getNodePath();
-  const env: Record<string, string> = {
-    ...process.env as Record<string, string>,
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
     PORT: String(serverPort),
     HOSTNAME: "localhost",
   };

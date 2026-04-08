@@ -38,6 +38,7 @@
   "exclude": [
     "node_modules",
     "electron",
-    "standalone-build"
+    "standalone-build",
+    "release"
   ]
 }

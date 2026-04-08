@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, globalShortcut, Menu } from "electron";
+import { app, BrowserWindow, ipcMain, dialog, globalShortcut, Menu, shell } from "electron";
 import path from "path";
 import { startServer, stopServer, onServerExit, connectToDevServer, getServerPort, restartServer } from "./server";
 import { loadConfig, saveConfig } from "./config";
@@ -81,7 +81,15 @@ function createMainWindow(port: number): BrowserWindow {
     win.maximize();
   }
 
-  win.loadURL(`http://localhost:${port}`);
+  win.loadURL(`http://localhost:${port}/landing`);
+
+  // Open external URLs in the default browser instead of a new Electron window
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith("https://") || url.startsWith("http://")) {
+      shell.openExternal(url);
+    }
+    return { action: "deny" };
+  });
 
   win.once("ready-to-show", () => {
     win.show();

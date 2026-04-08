@@ -1,7 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
-
 /* ------------------------------------------------------------------ */
 /*  Animated radar sweep (CSS-only, matches logo aesthetic)            */
 /* ------------------------------------------------------------------ */
@@ -96,62 +94,6 @@ function StatNumber({ value, label }: { value: string; label: string }) {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Terminal demo mockup                                               */
-/* ------------------------------------------------------------------ */
-function TerminalDemo() {
-  const [visibleLines, setVisibleLines] = useState(0);
-  const lines = [
-    { prefix: "$", text: "git clone https://github.com/twamp22/BumbaClaude.git", color: "text-zinc-300" },
-    { prefix: "$", text: "cd BumbaClaude && pnpm install", color: "text-zinc-300" },
-    { prefix: "$", text: "pnpm electron:dev", color: "text-zinc-300" },
-    { prefix: ">", text: "BumbaClaude desktop app launching...", color: "text-green-400" },
-    { prefix: " ", text: "", color: "" },
-    { prefix: "#", text: "Or download the installer from GitHub Releases", color: "text-zinc-500" },
-    { prefix: "#", text: "System tray, notifications, global shortcuts", color: "text-zinc-500" },
-    { prefix: "#", text: "Full audit trail. Zero modifications to Claude Code.", color: "text-zinc-500" },
-  ];
-
-  useEffect(() => {
-    if (visibleLines < lines.length) {
-      const timer = setTimeout(
-        () => setVisibleLines((prev) => prev + 1),
-        visibleLines === 0 ? 600 : 400
-      );
-      return () => clearTimeout(timer);
-    }
-  }, [visibleLines, lines.length]);
-
-  return (
-    <div className="bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl max-w-2xl mx-auto">
-      {/* Title bar */}
-      <div className="flex items-center gap-2 px-4 py-3 bg-zinc-900/80 border-b border-zinc-800">
-        <div className="w-3 h-3 rounded-full bg-red-500/80" />
-        <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
-        <div className="w-3 h-3 rounded-full bg-green-500/80" />
-        <span className="ml-3 text-xs font-mono text-zinc-500">
-          terminal -- bumba-claude
-        </span>
-      </div>
-      {/* Content */}
-      <div className="p-5 font-mono text-sm space-y-1 min-h-[220px]">
-        {lines.slice(0, visibleLines).map((line, index) => (
-          <div key={index} className={`${line.color} flex`}>
-            {line.prefix && (
-              <span className="text-green-500 mr-2 select-none">
-                {line.prefix}
-              </span>
-            )}
-            <span>{line.text}</span>
-          </div>
-        ))}
-        {visibleLines < lines.length && (
-          <span className="inline-block w-2 h-4 bg-green-400 animate-pulse" />
-        )}
-      </div>
-    </div>
-  );
-}
 
 /* ------------------------------------------------------------------ */
 /*  Architecture diagram                                               */
@@ -220,10 +162,10 @@ export default function LandingPage() {
       />
 
       {/* Navigation */}
-      <nav className="relative z-10 flex items-center justify-between px-6 md:px-12 py-5 border-b border-zinc-800/50">
+      <nav className="relative z-10 flex items-center justify-between px-6 md:px-12 py-4 border-b border-zinc-800/50 h-16">
         <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="BumbaClaude" className="w-28 h-28 object-contain" />
-          <span className="font-mono font-bold text-lg">BumbaClaude</span>
+          <img src="/logo.png" alt="BumbaClaude" className="w-28 h-28 object-contain -mb-6 -mt-3" />
+          <span className="font-mono font-bold text-2xl">BumbaClaude</span>
         </div>
         <div className="flex items-center gap-4">
           <a
@@ -288,18 +230,18 @@ export default function LandingPage() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
             <a
-              href="https://github.com/twamp22/BumbaClaude/releases/latest"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/"
               className="bg-green-600 hover:bg-green-500 text-white font-mono font-bold px-8 py-3.5 rounded-lg text-lg transition-colors shadow-[0_0_30px_rgba(34,197,94,0.2)] hover:shadow-[0_0_40px_rgba(34,197,94,0.3)]"
             >
-              Download v0.1.0
+              Open Dashboard
             </a>
             <a
-              href="/"
+              href="https://github.com/twamp22/BumbaClaude"
+              target="_blank"
+              rel="noopener noreferrer"
               className="border border-zinc-700 hover:border-zinc-500 text-zinc-300 font-mono px-8 py-3.5 rounded-lg text-lg transition-colors"
             >
-              Open Dashboard
+              View on GitHub
             </a>
           </div>
 
@@ -486,36 +428,34 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Quick start */}
+      {/* Getting started */}
       <section id="quick-start" className="relative z-10 px-6 md:px-12 py-20">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold font-mono mb-4">
-              Up and running in 30 seconds
+              Get started
             </h2>
+            <p className="text-zinc-400 max-w-xl mx-auto">
+              Create your first agent team from the dashboard, assign roles and
+              governance rules, and launch a workflow.
+            </p>
           </div>
 
-          <TerminalDemo />
-
-          <div className="mt-10 text-center">
-            <h3 className="font-mono font-bold text-zinc-300 mb-4">
-              Prerequisites
-            </h3>
-            <div className="flex flex-wrap justify-center gap-3">
-              {[
-                "Node.js 18+",
-                "pnpm",
-                "tmux",
-                "Claude Code CLI",
-                "Claude Max / API key",
-              ].map((req) => (
-                <span
-                  key={req}
-                  className="px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs font-mono text-zinc-400"
-                >
-                  {req}
-                </span>
-              ))}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-6 text-center">
+              <div className="text-3xl font-mono text-green-400 mb-3">1</div>
+              <h3 className="font-mono font-bold text-zinc-100 mb-2">Create a Team</h3>
+              <p className="text-sm text-zinc-400">Define agent roles, set model tiers, and configure governance boundaries.</p>
+            </div>
+            <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-6 text-center">
+              <div className="text-3xl font-mono text-green-400 mb-3">2</div>
+              <h3 className="font-mono font-bold text-zinc-100 mb-2">Launch Agents</h3>
+              <p className="text-sm text-zinc-400">Start agents from the team dashboard. Each runs in its own isolated session.</p>
+            </div>
+            <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-6 text-center">
+              <div className="text-3xl font-mono text-green-400 mb-3">3</div>
+              <h3 className="font-mono font-bold text-zinc-100 mb-2">Monitor & Intervene</h3>
+              <p className="text-sm text-zinc-400">Watch live output, send messages, and review the full audit trail.</p>
             </div>
           </div>
         </div>
@@ -611,12 +551,10 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <a
-              href="https://github.com/twamp22/BumbaClaude/releases/latest"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/"
               className="bg-green-600 hover:bg-green-500 text-white font-mono font-bold px-8 py-3.5 rounded-lg text-lg transition-colors shadow-[0_0_30px_rgba(34,197,94,0.2)] hover:shadow-[0_0_40px_rgba(34,197,94,0.3)]"
             >
-              Download for Windows
+              Open Dashboard
             </a>
             <a
               href="https://github.com/twamp22/BumbaClaude"

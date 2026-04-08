@@ -22,7 +22,7 @@ A standalone web dashboard that manages multi-agent Claude Code workflows withou
 
 ---
 
-## MVP scope (v0.1) -- "Mission Control"
+## MVP scope (v0.1) -- "Foundation"
 
 The MVP delivers the core loop: define a team, spawn agents, watch them work, intervene when needed.
 
@@ -301,7 +301,7 @@ This is a v0.2 feature. MVP should work entirely with tmux + filesystem.
 
 ## UI design direction
 
-**Aesthetic:** Industrial/utilitarian control room. Think mission control, not SaaS dashboard. Dark mode primary. Monospace fonts for agent output. Status colors that feel operational (not decorative). Dense information display -- this is a power tool, not a marketing page.
+**Aesthetic:** Industrial/utilitarian control room. Dark mode primary. Monospace fonts for agent output. Status colors that feel operational (not decorative). Dense information display -- this is a power tool, not a marketing page.
 
 **Key UI patterns:**
 - Sidebar navigation: Teams, Templates, Settings

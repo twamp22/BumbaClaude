@@ -1,5 +1,7 @@
 import { autoUpdater } from "electron-updater";
-import { BrowserWindow } from "electron";
+import { app, BrowserWindow } from "electron";
+import path from "path";
+import fs from "fs";
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -27,6 +29,7 @@ export function initAutoUpdater(win: BrowserWindow): void {
   });
 
   autoUpdater.on("update-downloaded", () => {
+    cleanUpdaterCache();
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send("update:downloaded");
     }
@@ -57,4 +60,22 @@ export function downloadUpdate(): void {
 
 export function installUpdate(): void {
   autoUpdater.quitAndInstall(false, true);
+}
+
+function cleanUpdaterCache(): void {
+  try {
+    const cacheDir = path.join(app.getPath("userData"), "..", "bumba-claude-updater");
+    if (fs.existsSync(cacheDir)) {
+      const entries = fs.readdirSync(cacheDir);
+      for (const entry of entries) {
+        // Keep the pending installer, remove old downloads
+        if (entry === "installer.exe") continue;
+        const fullPath = path.join(cacheDir, entry);
+        fs.rmSync(fullPath, { recursive: true, force: true });
+      }
+      console.log("Cleaned updater cache");
+    }
+  } catch (err) {
+    console.error("Failed to clean updater cache:", err);
+  }
 }

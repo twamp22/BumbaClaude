@@ -55,10 +55,38 @@ if (fs.existsSync(DEST)) {
 }
 fs.mkdirSync(DEST, { recursive: true });
 
-// Step 1: Copy everything except node_modules
+// Step 1: Copy only the files needed for the standalone server to run
+// Next.js standalone mirrors the entire project root, so we must skip
+// directories that are not needed at runtime to avoid bloat.
+const SKIP_DIRS = new Set([
+  "node_modules",  // handled separately with symlink resolution
+  "src",           // source code, not needed at runtime
+  "docs",          // documentation
+  "release",       // built artifacts
+  "standalone-build", // previous build output
+  "electron",      // electron source (packaged separately)
+  "dist-electron", // compiled electron code (packaged separately)
+  "scripts",       // build scripts
+  ".worktrees",    // git worktrees
+  "team_data",     // development data
+  "data",          // SQLite database (created at runtime)
+]);
+const SKIP_FILES = new Set([
+  "pnpm-lock.yaml",
+  "tsconfig.json",
+  "electron.tsconfig.json",
+  "electron-builder.config.js",
+  "postcss.config.mjs",
+  "CLAUDE.md",
+  "CONTRIBUTING.md",
+  "PHILOSOPHY.md",
+  "MVP_SPEC.md",
+  "LICENSE",
+  "README.md",
+]);
 const topEntries = fs.readdirSync(SRC);
 for (const entry of topEntries) {
-  if (entry === "node_modules") continue;
+  if (SKIP_DIRS.has(entry) || SKIP_FILES.has(entry)) continue;
   const srcPath = path.join(SRC, entry);
   const destPath = path.join(DEST, entry);
   const stat = fs.lstatSync(srcPath);
@@ -68,7 +96,7 @@ for (const entry of topEntries) {
     fs.copyFileSync(srcPath, destPath);
   }
 }
-console.log("  Copied standalone files (excluding node_modules)");
+console.log("  Copied standalone files (excluding non-runtime files)");
 
 // Step 2: Copy node_modules with all symlinks resolved
 const nmSrc = path.join(SRC, "node_modules");
@@ -109,7 +137,13 @@ if (fs.existsSync(pnpmDir)) {
   console.log("  Hoisted .pnpm packages to top-level node_modules");
 }
 
-// Step 2c: Replace ALL better-sqlite3 native binaries with system Node build
+// Step 2c: Remove the .pnpm store (no longer needed after hoisting)
+if (fs.existsSync(pnpmDir)) {
+  fs.rmSync(pnpmDir, { recursive: true });
+  console.log("  Removed .pnpm store (hoisted packages are sufficient)");
+}
+
+// Step 2d: Replace ALL better-sqlite3 native binaries with system Node build
 // Next.js bundles its own hashed copy in .next/node_modules/ and
 // electron-builder's @electron/rebuild recompiles for Electron's Node version.
 // Since we run the server with system Node, we need system-compatible binaries.
