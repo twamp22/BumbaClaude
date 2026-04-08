@@ -205,7 +205,7 @@ export default function LandingPage() {
           <div className="flex items-center justify-center gap-3 mb-6">
             <div className="inline-block px-3 py-1 rounded-full border border-green-500/20 bg-green-500/5">
               <span className="text-xs font-mono text-green-400">
-                v0.1.0 -- Open Source (MIT)
+                v0.1.1 -- Open Source (MIT)
               </span>
             </div>
             <div className="inline-block px-3 py-1 rounded-full border border-green-500/20 bg-green-500/5">

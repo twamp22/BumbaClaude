@@ -44,7 +44,7 @@ export default function DashboardLayout({
         </nav>
 
         <div className="p-3 border-t border-zinc-800 text-xs font-mono text-zinc-600">
-          <a href="https://github.com/twamp22/BumbaClaude" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-400 transition-colors">v0.1.0</a>
+          <a href="https://github.com/twamp22/BumbaClaude" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-400 transition-colors">v0.1.1</a>
         </div>
       </aside>
 

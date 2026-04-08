@@ -25,10 +25,10 @@
 
 ## Download
 
-**[Download BumbaClaude v0.1.0 for Windows](https://github.com/twamp22/BumbaClaude/releases/latest)**
+**[Download BumbaClaude v0.1.1 for Windows](https://github.com/twamp22/BumbaClaude/releases/latest)**
 
-- **BumbaClaude Setup 0.1.0.exe** -- Windows installer (recommended)
-- **BumbaClaude-0.1.0-win.zip** -- Portable version (no install needed)
+- **BumbaClaude Setup 0.1.1.exe** -- Windows installer (recommended)
+- **BumbaClaude-0.1.1-win.zip** -- Portable version (no install needed)
 
 > Requires Node.js v24+ and Claude Code CLI installed on your system.
 
@@ -144,7 +144,7 @@ No forks. No patches. No modifications to Claude Code's source or binary.
 
 | Version | Focus | Status |
 |---|---|---|
-| **v0.1.0** | Dashboard, team wizard, live monitor, audit log, templates, token/tool tracking, MCP discovery, scheduled tasks, context files, Electron desktop app | **Released** |
+| **v0.1.1** | Dashboard, team wizard, live monitor, audit log, templates, token/tool tracking, MCP discovery, scheduled tasks, context files, Electron desktop app | **Released** |
 | **v0.2.0** | Agent SDK integration, per-agent permissions, Kanban task board, template sharing/registry | Planned |
 | **v0.3.0** | Workflow replay, webhook notifications, context graph visualization | Planned |
 | **v0.4.0** | Plugin system, GitHub Actions integration, cross-platform builds (macOS/Linux) | Planned |
