@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/logo.png" alt="BumbaClaude - Mission Control for Claude Code" width="300" />
+  <img src="public/logo.png" alt="BumbaClaude - Agent Orchestration for Claude Code" width="300" />
 </p>
 
 <h1 align="center">BumbaClaude</h1>
@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/twamp22/BumbaClaude/releases/latest"><img src="https://img.shields.io/github/v/release/twamp22/BumbaClaude?color=green&label=release" alt="Latest Release" /></a>
   <a href="https://github.com/twamp22/BumbaClaude/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT License" /></a>
-  <a href="https://github.com/twamp22/BumbaClaude/releases"><img src="https://img.shields.io/badge/version-0.1.0-blue.svg" alt="Version" /></a>
   <a href="https://github.com/twamp22/BumbaClaude/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" /></a>
   <img src="https://img.shields.io/badge/first--party-compatible-green.svg" alt="First-Party Compatible" />
-  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows%20(WSL)-lightgrey.svg" alt="Platform" />
+  <img src="https://img.shields.io/badge/platform-Windows-blue.svg" alt="Platform" />
 </p>
 
 <p align="center">
@@ -23,16 +23,27 @@
 
 ---
 
-## Quick Start
+## Download
+
+**[Download BumbaClaude v0.1.0 for Windows](https://github.com/twamp22/BumbaClaude/releases/latest)**
+
+- **BumbaClaude Setup 0.1.0.exe** -- Windows installer (recommended)
+- **BumbaClaude-0.1.0-win.zip** -- Portable version (no install needed)
+
+> Requires Node.js v24+ and Claude Code CLI installed on your system.
+
+---
+
+## Quick Start (from source)
 
 ```bash
 git clone https://github.com/twamp22/BumbaClaude.git
 cd BumbaClaude
 pnpm install
-pnpm dev
+pnpm electron:dev    # Desktop app with hot reload
+# or
+pnpm dev             # Browser-only at http://localhost:3000
 ```
-
-Open [http://localhost:3000](http://localhost:3000). That's it.
 
 ---
 
@@ -60,8 +71,8 @@ Read the full philosophy: [PHILOSOPHY.md](./PHILOSOPHY.md)
 
 | Requirement | Why |
 |---|---|
-| Node.js 18+ | Runtime |
-| pnpm | Package manager |
+| Node.js 24+ | Runtime (for standalone app) |
+| pnpm | Package manager (for development) |
 | tmux | Agent session management |
 | Claude Code CLI | The `claude` command |
 | Claude Max or API key | LLM access |
@@ -69,6 +80,9 @@ Read the full philosophy: [PHILOSOPHY.md](./PHILOSOPHY.md)
 ---
 
 ## Features
+
+### Standalone Desktop App
+Native Windows application with system tray, notifications, global shortcuts, and auto-update. Runs as a standalone app -- no browser needed.
 
 ### Define Teams
 Create reusable agent team configurations with custom roles, model tiers, and governance rules. Set up a frontend team, a backend team, a QA team -- each with their own permissions and boundaries.
@@ -115,23 +129,25 @@ No forks. No patches. No modifications to Claude Code's source or binary.
 
 | Layer | Technology |
 |---|---|
+| Desktop | Electron 41+ (custom titlebar, system tray, auto-update) |
 | Framework | Next.js 16+ (App Router, TypeScript) |
 | Styling | Tailwind CSS (dark mode primary) |
 | Database | SQLite via better-sqlite3 |
 | Real-time | WebSocket (ws) |
 | File watching | chokidar |
 | Session mgmt | tmux via child_process |
+| Packaging | electron-builder (NSIS installer, portable zip) |
 
 ---
 
 ## Roadmap
 
-| Version | Focus |
-|---|---|
-| **v0.1** (current) | Dashboard, team wizard, live monitor, task list, audit log, templates |
-| **v0.2** | Agent SDK integration, granular permissions, token tracking, template sharing |
-| **v0.3** | Kanban board, context visualization, workflow replay, webhook notifications |
-| **v0.4** | Plugin system, public template registry, GitHub Actions integration |
+| Version | Focus | Status |
+|---|---|---|
+| **v0.1.0** | Dashboard, team wizard, live monitor, audit log, templates, Electron desktop app | **Released** |
+| **v0.2.0** | Agent SDK integration, granular permissions, token tracking, template sharing | Planned |
+| **v0.3.0** | Kanban board, context visualization, workflow replay, webhook notifications | Planned |
+| **v0.4.0** | Plugin system, public template registry, GitHub Actions integration | Planned |
 
 ---
 

@@ -104,11 +104,11 @@ function TerminalDemo() {
   const lines = [
     { prefix: "$", text: "git clone https://github.com/twamp22/BumbaClaude.git", color: "text-zinc-300" },
     { prefix: "$", text: "cd BumbaClaude && pnpm install", color: "text-zinc-300" },
-    { prefix: "$", text: "pnpm dev", color: "text-zinc-300" },
-    { prefix: ">", text: "Ready on http://localhost:3000", color: "text-green-400" },
+    { prefix: "$", text: "pnpm electron:dev", color: "text-zinc-300" },
+    { prefix: ">", text: "BumbaClaude desktop app launching...", color: "text-green-400" },
     { prefix: " ", text: "", color: "" },
-    { prefix: "#", text: "Launch a team with 3 agents in seconds", color: "text-zinc-500" },
-    { prefix: "#", text: "Monitor live terminal output from every agent", color: "text-zinc-500" },
+    { prefix: "#", text: "Or download the installer from GitHub Releases", color: "text-zinc-500" },
+    { prefix: "#", text: "System tray, notifications, global shortcuts", color: "text-zinc-500" },
     { prefix: "#", text: "Full audit trail. Zero modifications to Claude Code.", color: "text-zinc-500" },
   ];
 
@@ -274,7 +274,7 @@ export default function LandingPage() {
           </div>
 
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold font-mono tracking-tight mb-6">
-            <span className="text-zinc-100">Mission Control</span>
+            <span className="text-zinc-100">Agent Orchestration</span>
             <br />
             <span className="bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent">
               for Claude Code
@@ -288,10 +288,12 @@ export default function LandingPage() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
             <a
-              href="/teams/new"
+              href="https://github.com/twamp22/BumbaClaude/releases/latest"
+              target="_blank"
+              rel="noopener noreferrer"
               className="bg-green-600 hover:bg-green-500 text-white font-mono font-bold px-8 py-3.5 rounded-lg text-lg transition-colors shadow-[0_0_30px_rgba(34,197,94,0.2)] hover:shadow-[0_0_40px_rgba(34,197,94,0.3)]"
             >
-              Create Your First Team
+              Download v0.1.0
             </a>
             <a
               href="/"
@@ -303,7 +305,7 @@ export default function LandingPage() {
 
           <p className="text-xs font-mono text-zinc-600">
             Zero modifications to Claude Code. Works with Claude Max or API
-            keys.
+            keys. Windows installer or portable zip.
           </p>
         </div>
       </section>
@@ -529,28 +531,28 @@ export default function LandingPage() {
           <div className="space-y-6">
             {[
               {
-                version: "v0.1",
-                label: "current",
+                version: "v0.1.0",
+                label: "released",
                 title: "Foundation",
                 items:
-                  "Dashboard, team wizard, live monitor, task list, audit log, templates",
+                  "Dashboard, team wizard, live monitor, task list, audit log, templates, Electron desktop app",
               },
               {
-                version: "v0.2",
+                version: "v0.2.0",
                 label: "",
                 title: "Integration",
                 items:
                   "Agent SDK integration, granular permissions, token tracking, template sharing",
               },
               {
-                version: "v0.3",
+                version: "v0.3.0",
                 label: "",
                 title: "Visualization",
                 items:
                   "Kanban board, context visualization, workflow replay, webhook notifications",
               },
               {
-                version: "v0.4",
+                version: "v0.4.0",
                 label: "",
                 title: "Ecosystem",
                 items:
@@ -609,16 +611,20 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <a
-              href="/teams/new"
+              href="https://github.com/twamp22/BumbaClaude/releases/latest"
+              target="_blank"
+              rel="noopener noreferrer"
               className="bg-green-600 hover:bg-green-500 text-white font-mono font-bold px-8 py-3.5 rounded-lg text-lg transition-colors shadow-[0_0_30px_rgba(34,197,94,0.2)] hover:shadow-[0_0_40px_rgba(34,197,94,0.3)]"
             >
-              Create a Team
+              Download for Windows
             </a>
             <a
-              href="/"
+              href="https://github.com/twamp22/BumbaClaude"
+              target="_blank"
+              rel="noopener noreferrer"
               className="border border-zinc-700 hover:border-zinc-500 text-zinc-300 font-mono px-8 py-3.5 rounded-lg text-lg transition-colors"
             >
-              Go to Dashboard
+              View on GitHub
             </a>
           </div>
         </div>
